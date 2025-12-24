@@ -45,13 +45,13 @@ type conversionTest struct {
 
 // Target variables for scanning into.
 var (
-	scanstr    string
-	scanbytes  []byte
-	scanraw    sql.RawBytes
-	scanint    int
-	scanint8   int8
-	scanint16  int16
-	scanint32  int32
+	scanstr   string
+	scanbytes []byte
+	scanraw   sql.RawBytes
+	scanint   int
+	// scanint8   int8
+	// scanint16  int16
+	// scanint32  int32
 	scanuint8  uint8
 	scanuint16 uint16
 	scanbool   bool
