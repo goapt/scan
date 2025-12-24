@@ -35,7 +35,7 @@ var (
 	ColumnsMapper = func(name string) string { return name }
 )
 
-var columnsCache cache = &sync.Map{}
+var columnsCache = &sync.Map{}
 
 type cacheKey struct {
 	Type   reflect.Type

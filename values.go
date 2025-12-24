@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-var valuesCache cache = &sync.Map{}
+var valuesCache = &sync.Map{}
 
 // Values scans a struct and returns the values associated with the columns
 // provided. Only simple value types are supported (i.e. Bool, Ints, Uints,

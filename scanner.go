@@ -3,7 +3,6 @@ package scan
 import (
 	"database/sql"
 	"errors"
-	"io"
 	"reflect"
 	"strings"
 	"unicode"
@@ -15,18 +14,21 @@ var (
 	// `select col1, col2 from mutable` to []string
 	ErrTooManyColumns = errors.New("too many columns returned for primitive slice")
 
-	// AutoClose is true when scan should automatically close Scanner when the scan
-	// is complete. If you set it to false, then you must defer rows.Close() manually
-	AutoClose = true
-
-	// OnAutoCloseError can be used to log errors which are returned from rows.Close()
-	// By default this is a NOOP function
-	OnAutoCloseError = func(error) {}
-
 	// ScannerMapper transforms database field names into struct/map field names
 	// E.g. you can set function for convert snake_case into CamelCase
 	ScannerMapper = func(name string) string { return toTitleCase(name) }
 )
+
+// RowsScanner is a database scanner for many rows. It is most commonly the
+// result of *sql.DB Query(...).
+type RowsScanner interface {
+	Close() error
+	Scan(dest ...any) error
+	Columns() ([]string, error)
+	ColumnTypes() ([]*sql.ColumnType, error)
+	Err() error
+	Next() bool
+}
 
 // toTitleCase converts a string to title case (first letter capitalized)
 func toTitleCase(s string) string {
@@ -58,9 +60,6 @@ func capitalizeFirst(s string) string {
 // Row scans a single row and returns a value of type T.
 // It requires that you use db.Query and not db.QueryRow, because QueryRow does not return column names.
 func Row[T any](r RowsScanner) (T, error) {
-	if AutoClose {
-		defer closeRows(r)
-	}
 	var zero T
 	items, err := rowsGeneric[T](r)
 	if err != nil {
@@ -74,9 +73,6 @@ func Row[T any](r RowsScanner) (T, error) {
 
 // Rows scans sql rows into a slice of T.
 func Rows[T any](r RowsScanner) ([]T, error) {
-	if AutoClose {
-		defer closeRows(r)
-	}
 	return rowsGeneric[T](r)
 }
 
@@ -161,12 +157,4 @@ func structPointers(sliceItem reflect.Value, cols []string) []any {
 		pointers = append(pointers, fieldVal.Addr().Interface())
 	}
 	return pointers
-}
-
-func closeRows(c io.Closer) {
-	if err := c.Close(); err != nil {
-		if OnAutoCloseError != nil {
-			OnAutoCloseError(err)
-		}
-	}
 }

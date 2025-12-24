@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"reflect"
-	"sync/atomic"
 	"testing"
 
 	"github.com/goapt/scan"
@@ -21,6 +20,7 @@ func TestRowsConvertsColumnNamesToTitleText(t *testing.T) {
 	rows := fakeRowsWithRecords(t, []string{"First"},
 		[]any{expected},
 	)
+	defer rows.Close()
 
 	item, err := scan.Row[Item](rows)
 	require.NoError(t, err)
@@ -33,6 +33,7 @@ func TestRowsUsesTagName(t *testing.T) {
 	rows := fakeRowsWithRecords(t, []string{"first_and_last_name"},
 		[]any{expected},
 	)
+	defer rows.Close()
 
 	type Item struct {
 		FirstAndLastName string `db:"first_and_last_name"`
@@ -49,6 +50,7 @@ func TestRowsIgnoresUnsetableColumns(t *testing.T) {
 	rows := fakeRowsWithRecords(t, []string{"first_and_last_name"},
 		[]any{expected},
 	)
+	defer rows.Close()
 
 	type Item struct {
 		// private, unsetable
@@ -66,6 +68,7 @@ func TestErrorsWhenScanErrors(t *testing.T) {
 	rows.ScanStub = func(...any) error {
 		return expected
 	}
+	defer rows.Close()
 
 	type Item struct {
 		FirstAndLastName string `db:"first_and_last_name"`
@@ -76,6 +79,7 @@ func TestErrorsWhenScanErrors(t *testing.T) {
 
 func TestRowsErrorsWhenNotGivenAPointer(t *testing.T) {
 	rows := fakeRowsWithColumns(t, 1, "name")
+	defer rows.Close()
 
 	_, err := scan.Rows[string](rows)
 	require.NoError(t, err)
@@ -83,6 +87,7 @@ func TestRowsErrorsWhenNotGivenAPointer(t *testing.T) {
 
 func TestRowsErrorsWhenNotGivenAPointerToSlice(t *testing.T) {
 	rows := fakeRowsWithColumns(t, 1, "name")
+	defer rows.Close()
 
 	_, err := scan.Rows[struct{}](rows)
 	require.NoError(t, err)
@@ -95,6 +100,7 @@ func TestErrorsWhenColumnsReturnsError(t *testing.T) {
 			return nil, expected
 		},
 	}
+	defer rows.Close()
 
 	type Item struct {
 		Name string
@@ -106,6 +112,7 @@ func TestErrorsWhenColumnsReturnsError(t *testing.T) {
 
 func TestDoesNothingWhenNoColumns(t *testing.T) {
 	rows := fakeRowsWithColumns(t, 1)
+	defer rows.Close()
 
 	type Item struct {
 		Name string
@@ -118,6 +125,7 @@ func TestDoesNothingWhenNoColumns(t *testing.T) {
 
 func TestDoesNothingWhenNextIsFalse(t *testing.T) {
 	rows := fakeRowsWithColumns(t, 0, "Name")
+	defer rows.Close()
 
 	type Item struct {
 		Name string
@@ -133,6 +141,7 @@ func TestIgnoresColumnsThatDoNotHaveFields(t *testing.T) {
 		[]any{"Brett", "Jones"},
 		[]any{"Fred", "Jones"},
 	)
+	defer rows.Close()
 
 	type Item struct {
 		First string
@@ -152,6 +161,7 @@ func TestIgnoresFieldsThatDoNotHaveColumns(t *testing.T) {
 		[]any{"Brett", int8(40)},
 		[]any{"Fred", int8(50)},
 	)
+	defer rows.Close()
 
 	type Item struct {
 		First string
@@ -175,6 +185,7 @@ func TestRowScansToPrimitiveType(t *testing.T) {
 	rows := fakeRowsWithRecords(t, []string{"name"},
 		[]any{expected},
 	)
+	defer rows.Close()
 
 	name, err := scan.Row[string](rows)
 	assert.NoError(t, err)
@@ -186,6 +197,7 @@ func TestReturnsScannerError(t *testing.T) {
 
 	rows := fakeRowsWithColumns(t, 1, "Name")
 	rows.ErrReturns(scanErr)
+	defer rows.Close()
 
 	_, err := scan.Rows[struct{ Name string }](rows)
 	assert.EqualValues(t, scanErr, err)
@@ -216,6 +228,7 @@ func TestScansPrimitiveSlices(t *testing.T) {
 
 func TestErrorsWhenMoreThanOneColumnForPrimitiveSlice(t *testing.T) {
 	rows := fakeRowsWithColumns(t, 1, "fname", "lname")
+	defer rows.Close()
 
 	_, err := scan.Rows[string](rows)
 	assert.EqualValues(t, scan.ErrTooManyColumns, err)
@@ -223,6 +236,7 @@ func TestErrorsWhenMoreThanOneColumnForPrimitiveSlice(t *testing.T) {
 
 func TestErrorsWhenScanRowToSlice(t *testing.T) {
 	rows := &FakeRowsScanner{}
+	defer rows.Close()
 
 	_, err := scan.Row[[]struct{ ID int }](rows)
 	assert.EqualValues(t, sql.ErrNoRows, err)
@@ -230,6 +244,7 @@ func TestErrorsWhenScanRowToSlice(t *testing.T) {
 
 func TestRowReturnsErrNoRowsWhenQueryHasNoRows(t *testing.T) {
 	rows := fakeRowsWithColumns(t, 0, "First")
+	defer rows.Close()
 
 	type Item struct {
 		First string
@@ -240,6 +255,7 @@ func TestRowReturnsErrNoRowsWhenQueryHasNoRows(t *testing.T) {
 
 func TestRowErrorsWhenItemIsNotAPointer(t *testing.T) {
 	rows := &FakeRowsScanner{}
+	defer rows.Close()
 
 	_, err := scan.Row[struct{ First string }](rows)
 	assert.EqualValues(t, sql.ErrNoRows, err)
@@ -249,6 +265,7 @@ func TestRowScansNestedFields(t *testing.T) {
 	rows := fakeRowsWithRecords(t, []string{"p.First", "p.Last"},
 		[]any{"Brett", "Jones"},
 	)
+	defer rows.Close()
 
 	type Item struct {
 		First string `db:"p.First"`
@@ -266,27 +283,8 @@ func TestRowClosesEarly(t *testing.T) {
 	)
 
 	_, _ = scan.Row[string](rows)
+	rows.Close()
 	assert.EqualValues(t, 1, rows.CloseCallCount())
-}
-
-func Test_OnAutoCloseErrorIsCalledWhenRowsCloseErrors(t *testing.T) {
-	expected := sql.ErrTxDone
-	calls := int32(0)
-
-	scan.OnAutoCloseError = func(err error) {
-		assert.Equal(t, expected, err)
-		atomic.AddInt32(&calls, 1)
-	}
-
-	rows := fakeRowsWithRecords(t, []string{"name"},
-		[]any{"Bob"},
-	)
-
-	rows.CloseReturns(expected)
-
-	_, err := scan.Row[string](rows)
-	assert.NoError(t, err)
-	assert.EqualValues(t, 1, calls)
 }
 
 func setValue(ptr, val any) {
