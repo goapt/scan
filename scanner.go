@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -12,12 +13,15 @@ var (
 	// ErrTooManyColumns indicates that a select query returned multiple columns and
 	// attempted to bind to a slice of a primitive type. For example, trying to bind
 	// `select col1, col2 from mutable` to []string
-	ErrTooManyColumns = errors.New("too many columns returned for primitive slice")
+	ErrTooManyColumns      = errors.New("too many columns returned for primitive slice")
+	ErrUnsupportedTimeType = errors.New("unsupported time scan source")
 
 	// ScannerMapper transforms database field names into struct/map field names
 	// E.g. you can set function for convert snake_case into CamelCase
 	ScannerMapper = func(name string) string { return toTitleCase(name) }
 )
+
+var timeType = reflect.TypeOf(time.Time{})
 
 // RowsScanner is a database scanner for many rows. It is most commonly the
 // result of *sql.DB Query(...).
@@ -146,15 +150,33 @@ func structPointers(sliceItem reflect.Value, cols []string) []any {
 			fieldVal = sliceItem.FieldByName(ScannerMapper(colName))
 		}
 		if !fieldVal.IsValid() || !fieldVal.CanSet() {
-			// have to add if we found a column because Scan() requires
-			// len(cols) arguments or it will error. This way we can scan to
-			// a useless pointer
 			var nothing any
 			pointers = append(pointers, &nothing)
+			continue
+		}
+
+		if fieldVal.Type() == timeType {
+			pointers = append(pointers, &timeScanner{dest: fieldVal})
 			continue
 		}
 
 		pointers = append(pointers, fieldVal.Addr().Interface())
 	}
 	return pointers
+}
+
+type timeScanner struct {
+	dest reflect.Value
+}
+
+func (t *timeScanner) Scan(src any) error {
+	if src == nil {
+		t.dest.Set(reflect.ValueOf(time.Time{}))
+		return nil
+	}
+	if v, ok := src.(time.Time); ok {
+		t.dest.Set(reflect.ValueOf(v))
+		return nil
+	}
+	return ErrUnsupportedTimeType
 }
