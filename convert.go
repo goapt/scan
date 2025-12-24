@@ -7,6 +7,7 @@ package scan
 import (
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -64,7 +65,7 @@ func convertAssign(dest, src any) error {
 			*d = s.Format(time.RFC3339Nano)
 			return nil
 		case *[]byte:
-			*d = []byte(s.Format(time.RFC3339Nano))
+			*d = s.AppendFormat(make([]byte, 0, len(time.RFC3339Nano)), time.RFC3339Nano)
 			return nil
 		case *sql.RawBytes:
 			*d = s.AppendFormat((*d)[:0], time.RFC3339Nano)
@@ -114,6 +115,9 @@ func convertAssign(dest, src any) error {
 	}
 
 	dpv := reflect.ValueOf(dest)
+	if dpv.Kind() != reflect.Pointer {
+		return errors.New("destination not a pointer")
+	}
 
 	if !sv.IsValid() {
 		sv = reflect.ValueOf(src)
@@ -142,14 +146,14 @@ func convertAssign(dest, src any) error {
 	// For symmetry, also check for string destination types.
 	if s, ok := asString(src); ok {
 		switch dv.Kind() {
-		case reflect.Ptr:
+		case reflect.Pointer:
 			dv.Set(reflect.New(dv.Type().Elem()))
 			return convertAssign(dv.Interface(), src)
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			i64, err := strconv.ParseInt(s, 10, dv.Type().Bits())
 			if err != nil {
 				// The errors that ParseInt returns have concrete type *NumError
-				err = err.(*strconv.NumError).Err
+				err = strconvErr(err)
 				return fmt.Errorf("converting driver.Value type %T (%q) to a %s: %v", src, s, dv.Kind(), err)
 			}
 			dv.SetInt(i64)
@@ -158,7 +162,7 @@ func convertAssign(dest, src any) error {
 			u64, err := strconv.ParseUint(s, 10, dv.Type().Bits())
 			if err != nil {
 				// The errors that ParseUint returns have concrete type *NumError
-				err = err.(*strconv.NumError).Err
+				err = strconvErr(err)
 				return fmt.Errorf("converting driver.Value type %T (%q) to a %s: %v", src, s, dv.Kind(), err)
 			}
 			dv.SetUint(u64)
@@ -167,7 +171,7 @@ func convertAssign(dest, src any) error {
 			f64, err := strconv.ParseFloat(s, dv.Type().Bits())
 			if err != nil {
 				// The errors that ParseFloat returns have concrete type *NumError
-				err = err.(*strconv.NumError).Err
+				err = strconvErr(err)
 				return fmt.Errorf("converting driver.Value type %T (%q) to a %s: %v", src, s, dv.Kind(), err)
 			}
 			dv.SetFloat(f64)
@@ -188,6 +192,13 @@ func cloneBytes(b []byte) []byte {
 	c := make([]byte, len(b))
 	copy(c, b)
 	return c
+}
+
+func strconvErr(err error) error {
+	if ne, ok := err.(*strconv.NumError); ok {
+		return ne.Err
+	}
+	return err
 }
 
 func asString(src any) (string, bool) {
