@@ -117,7 +117,7 @@ var userSelectCols = scan.Columns(nobody)
 
 ### Values
 
-`Values` scans a struct and returns the values associated with the provided columns. Values uses a `sync.Map` to cache fields of structs to greatly improve the performance of scanning types. The first time a struct is scanned it's **exported** fields locations are cached. When later retrieving values from the same struct it should be much faster. See [Benchmarks](#Benchmarks) below.
+`Values` scans a struct and returns the values associated with the provided columns. Values uses a `sync.Map` to cache fields of structs to greatly improve the performance of scanning types. The first time a struct is scanned it's **exported** fields locations are cached. When later retrieving values from the same struct it should be much faster.
 
 ```go
 user := &User{
@@ -144,24 +144,4 @@ AutoClose: Automatically call `rows.Close()` after scan completes (default true)
 
 ## Why
 
-While many other projects support similar features (i.e. [sqlx](https://github.com/jmoiron/sqlx)) scan allows you to use any database lib such as the stdlib or [squirrel][sq] to write fluent SQL statements and pass the resulting `rows` to `scan` for scanning.
-
-## Benchmarks
-
-```
-$ go test -bench=. -benchtime=10s ./...
-goos: linux
-goarch: amd64
-pkg: github.com/blockloop/scan
-cpu: 11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz
-BenchmarkColumnsLargeStruct-8           41527964               288.0 ns/op
-BenchmarkValuesLargeStruct-8             6816885              1807 ns/op
-BenchmarkScanRowOneField-8               5686971              2074 ns/op
-BenchmarkScanRowFiveFields-8             4962622              2381 ns/op
-BenchmarkScanTenRowsOneField-8           1537761              8598 ns/op
-BenchmarkScanTenRowsTenFields-8           322106             50431 ns/op
-PASS
-ok      github.com/blockloop/scan       92.374s
-```
-
-[sq]: https://github.com/Masterminds/squirrel "Squirrel"
+While many other projects support similar features (i.e. [sqlx](https://github.com/jmoiron/sqlx)) scan allows you to use any database lib such as the stdlib to write fluent SQL statements and pass the resulting `rows` to `scan` for scanning.
