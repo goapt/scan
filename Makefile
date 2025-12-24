@@ -1,5 +1,3 @@
-include .bingo/Variables.mk
-
 .DEFAULT_GOAL := build
 
 GOFILES=$(shell find . -type f -iname '*.go')
