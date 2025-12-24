@@ -11,7 +11,7 @@ import "github.com/goapt/scan"
 ```go
 db, err := sql.Open("sqlite3", "database.sqlite")
 rows, err := db.Query("SELECT * FROM persons")
-
+defer rows.Close()
 persons, err := scan.Rows[Person](rows)
 
 fmt.Printf("%#v", persons)
@@ -26,6 +26,7 @@ fmt.Printf("%#v", persons)
 
 ```go
 rows, err := db.Query("SELECT name FROM persons")
+defer rows.Close()
 names, err := scan.Rows[string](rows)
 
 fmt.Printf("%#v", names)
@@ -41,6 +42,7 @@ fmt.Printf("%#v", names)
 ```go
 rows, err := db.Query("SELECT * FROM persons where name = 'brett' LIMIT 1")
 person, err := scan.Row[Person](rows)
+defer rows.Close()
 
 fmt.Printf("%#v", person)
 // Person{ ID: 1, Name: "brett" }
@@ -50,6 +52,7 @@ fmt.Printf("%#v", person)
 
 ```go
 rows, err := db.Query("SELECT age FROM persons where name = 'brett' LIMIT 1")
+defer rows.Close()
 age, err := scan.Row[int8](rows)
 
 fmt.Printf("%d", age)
@@ -64,6 +67,7 @@ rows, err := db.Query(`
 	JOIN company on company.id = person.company_id
 	LIMIT 1
 `)
+defer rows.Close()
 
 type Person struct {
 	ID      int    `db:"person.id"`
@@ -82,7 +86,7 @@ err = json.NewEncoder(os.Stdout).Encode(&person)
 
 ### Custom Column Mapping
 
-By default, column names are mapped [to](https://github.com/blockloop/scan/blob/4741cc8ac5746ca7e5893d3b54a3347a7735c168/columns.go#L35) and [from](https://github.com/blockloop/scan/blob/4741cc8ac5746ca7e5893d3b54a3347a7735c168/scanner.go#L33) database column names using basic title case conversion. You can override this behavior by setting `ColumnsMapper` and `ScannerMapper` to custom functions.
+By default, column names are mapped to and from database column names using basic title case conversion. You can override this behavior by setting `ColumnsMapper` and `ScannerMapper` to custom functions.
 
 ### Columns
 

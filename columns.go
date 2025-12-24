@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"sync"
 )
 
@@ -70,17 +71,8 @@ func columns(v any, strict bool, excluded ...string) ([]string, error) {
 		cached := cache.([]string)
 		res := make([]string, 0, len(cached))
 
-		keep := func(k string) bool {
-			for _, c := range excluded {
-				if c == k {
-					return false
-				}
-			}
-			return true
-		}
-
 		for _, k := range cached {
-			if keep(k) {
+			if !slices.Contains(excluded, k) {
 				res = append(res, k)
 			}
 		}
@@ -122,7 +114,7 @@ func columnNames(model reflect.Value, strict bool, excluded ...string) []string 
 			continue
 		}
 
-		if isExcluded(fieldName, excluded...) {
+		if slices.Contains(excluded, fieldName) {
 			continue
 		}
 
@@ -134,19 +126,10 @@ func columnNames(model reflect.Value, strict bool, excluded ...string) []string 
 	return names
 }
 
-func isExcluded(name string, excluded ...string) bool {
-	for _, ex := range excluded {
-		if ex == name {
-			return true
-		}
-	}
-	return false
-}
-
 func reflectValue(v any) (reflect.Value, error) {
 	vType := reflect.TypeOf(v)
 	vKind := vType.Kind()
-	if vKind != reflect.Ptr {
+	if vKind != reflect.Pointer {
 		return reflect.Value{}, fmt.Errorf("%q must be a pointer: %w", vKind.String(), ErrNotAPointer)
 	}
 
@@ -164,7 +147,7 @@ func supportedColumnType(v reflect.Value) bool {
 		reflect.Uint64, reflect.Float32, reflect.Float64, reflect.Interface,
 		reflect.String:
 		return true
-	case reflect.Ptr, reflect.Slice, reflect.Array:
+	case reflect.Pointer, reflect.Slice, reflect.Array:
 		ptrVal := reflect.New(v.Type().Elem())
 		return supportedColumnType(ptrVal.Elem())
 	default:
@@ -177,7 +160,7 @@ func isValidSqlValue(v reflect.Value) bool {
 	// 1. It returns true for sql.driver's type check for types like time.Time
 	// 2. It implements the driver.Valuer interface allowing conversion directly
 	//    into sql statements
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		ptrVal := reflect.New(v.Type().Elem())
 		return isValidSqlValue(ptrVal.Elem())
 	}
