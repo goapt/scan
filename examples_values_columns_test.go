@@ -85,7 +85,7 @@ func ExampleColumnsStrict() {
 	// [id age]
 }
 
-func ExampleColumnsNested() {
+func ExampleColumns_nested() {
 	var person struct {
 		ID      int    `db:"person.id"`
 		Name    string `db:"person.name"`
@@ -101,7 +101,7 @@ func ExampleColumnsNested() {
 	// [person.id person.name company.id Name]
 }
 
-func ExampleColumnsNestedStrict() {
+func ExampleColumns_nestedStrict() {
 	var person struct {
 		ID      int    `db:"person.id"`
 		Name    string `db:"person.name"`
@@ -117,7 +117,7 @@ func ExampleColumnsNestedStrict() {
 	// [person.id person.name company.id]
 }
 
-func ExampleColumnsNested_exclude() {
+func ExampleColumns_nested_exclude() {
 	var person struct {
 		ID      int    `db:"person.id"`
 		Name    string `db:"person.name"`

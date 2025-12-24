@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/proullon/ramsql/engine/agnostic"
-	"github.com/proullon/ramsql/engine/log"
-	"github.com/proullon/ramsql/engine/parser"
+	"github.com/blockloop/scan/v2/internal/engine/agnostic"
+	"github.com/blockloop/scan/v2/internal/engine/log"
+	"github.com/blockloop/scan/v2/internal/engine/parser"
 )
 
 // Engine is the root struct of RamSQL server
@@ -370,6 +370,9 @@ func getValues(specifiedAttrs []string, valuesDecl *parser.Decl, args []NamedVal
 			if err != nil {
 				return nil, err
 			}
+		}
+		if i >= len(specifiedAttrs) {
+			return nil, fmt.Errorf("values count exceeds specified columns: values=%d, columns=%d", len(valuesDecl.Decl), len(specifiedAttrs))
 		}
 		values[strings.ToLower(specifiedAttrs[i])] = v
 	}

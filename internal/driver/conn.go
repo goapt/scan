@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"database/sql/driver"
 
-	"github.com/proullon/ramsql/engine/executor"
-	"github.com/proullon/ramsql/engine/log"
+	"github.com/blockloop/scan/v2/internal/engine/executor"
+	"github.com/blockloop/scan/v2/internal/engine/log"
 )
 
 // Conn implements sql/driver Conn interface

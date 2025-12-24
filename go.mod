@@ -1,12 +1,8 @@
 module github.com/blockloop/scan/v2
 
-go 1.17
+go 1.21.0
 
-require (
-	github.com/proullon/ramsql v0.0.1
-	github.com/stretchr/testify v1.8.2
-	golang.org/x/text v0.14.0
-)
+require github.com/stretchr/testify v1.11.1
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect

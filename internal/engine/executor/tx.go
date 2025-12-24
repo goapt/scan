@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/proullon/ramsql/engine/agnostic"
-	"github.com/proullon/ramsql/engine/log"
-	"github.com/proullon/ramsql/engine/parser"
+	"github.com/blockloop/scan/v2/internal/engine/agnostic"
+	"github.com/blockloop/scan/v2/internal/engine/log"
+	"github.com/blockloop/scan/v2/internal/engine/parser"
 )
 
 type executorFunc func(*Tx, *parser.Decl, []NamedValue) (int64, int64, []string, []*agnostic.Tuple, error)
@@ -162,7 +162,7 @@ func (t *Tx) getSelector(attr *parser.Decl, schema string, tables []string, alia
 			if attr.Decl[0].Lexeme != a {
 				return agnostic.NewAttributeSelector(a, []string{attribute}, agnostic.WithAlias(attr.Decl[0].Lexeme)), nil
 			}
-			return agnostic.NewAttributeSelector(attr.Decl[0].Lexeme, []string{attribute}), nil
+			return agnostic.NewAttributeSelector(attr.Decl[0].Lexeme, []string{attribute}, agnostic.WithAlias(attr.Decl[0].Lexeme)), nil
 		}
 		for _, table := range tables {
 			_, _, err = t.tx.RelationAttribute(schema, getAlias(table, aliases), attribute)

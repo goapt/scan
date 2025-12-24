@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"testing"
 
 	"github.com/blockloop/scan/v2"
-	_ "github.com/proullon/ramsql/driver"
+	_ "github.com/blockloop/scan/v2/internal/driver"
 )
 
 func mustDB(name string, queries ...string) *sql.DB {
@@ -29,10 +30,10 @@ func mustDB(name string, queries ...string) *sql.DB {
 func exampleDB() *sql.DB {
 	return mustDB(fmt.Sprintf("%d", rand.Uint64()), `CREATE TABLE person (
 		id INTEGER NOT NULL,
-		name VARCHAR(120)
+		name VARCHAR(120) DEFAULT null
 	);`,
-		`INSERT INTO person (id, name) VALUES (1, 'brett', 1);`,
-		`INSERT INTO person (id, name) VALUES (2, 'fred', 1);`,
+		`INSERT INTO person (id, name) VALUES (1, 'brett');`,
+		`INSERT INTO person (id, name) VALUES (2, 'fred');`,
 		`INSERT INTO person (id) VALUES (3);`,
 	)
 }
@@ -81,7 +82,7 @@ func ExampleRow() {
 	// {"ID":1,"Name":"brett"}
 }
 
-func ExampleRowNested() {
+func ExampleRowStrict_nested() {
 	db := exampleNestedDB()
 	defer db.Close()
 	rows, err := db.Query(`
@@ -137,7 +138,7 @@ func ExampleRowStrict() {
 	// {"ID":0,"Name":"brett"}
 }
 
-func ExampleRowPtr() {
+func ExampleRowStrict_ptr() {
 	db := exampleDB()
 	defer db.Close()
 	rows, err := db.Query("SELECT id,name FROM person where id = 3 LIMIT 1")
@@ -160,7 +161,7 @@ func ExampleRowPtr() {
 	// {"ID":0,"Name":null}
 }
 
-func ExampleRowPtrType() {
+func ExampleRowStrict_ptrType() {
 	db := exampleDB()
 	defer db.Close()
 	rows, err := db.Query("SELECT id,name FROM person where id = 3 LIMIT 1")
@@ -267,4 +268,16 @@ func ExampleRows_primitive() {
 	json.NewEncoder(os.Stdout).Encode(&names)
 	// Output:
 	// ["brett","fred"]
+}
+
+func TestInsertTooManyValues(t *testing.T) {
+	db := mustDB(fmt.Sprintf("%d", rand.Uint64()), `CREATE TABLE person (
+		id INTEGER NOT NULL,
+		name VARCHAR(120)
+	);`)
+	defer db.Close()
+	_, err := db.Exec(`INSERT INTO person (id, name) VALUES (1, 'brett', 1);`)
+	if err == nil {
+		t.Fatalf("expected error inserting too many values, got nil")
+	}
 }

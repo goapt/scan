@@ -3,7 +3,7 @@ package log
 import (
 	"context"
 	"fmt"
-	"golang.org/x/exp/slog"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"

@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
+	"strings"
+	"unicode"
 )
 
 var (
@@ -30,8 +29,35 @@ var (
 
 	// ScannerMapper transforms database field names into struct/map field names
 	// E.g. you can set function for convert snake_case into CamelCase
-	ScannerMapper = func(name string) string { return cases.Title(language.English).String(name) }
+	ScannerMapper = func(name string) string { return toTitleCase(name) }
 )
+
+// toTitleCase converts a string to title case (first letter capitalized)
+func toTitleCase(s string) string {
+	if s == "" {
+		return s
+	}
+
+	// Split by underscores to handle snake_case
+	parts := strings.Split(s, "_")
+	for i, part := range parts {
+		if part != "" {
+			parts[i] = capitalizeFirst(part)
+		}
+	}
+	return strings.Join(parts, "")
+}
+
+// capitalizeFirst capitalizes the first letter of a string
+func capitalizeFirst(s string) string {
+	if s == "" {
+		return s
+	}
+
+	runes := []rune(s)
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
+}
 
 // Row scans a single row into a single variable. It requires that you use
 // db.Query and not db.QueryRow, because QueryRow does not return column names.

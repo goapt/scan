@@ -101,7 +101,7 @@ func (a Attribute) String() string {
 
 func typeInstanceFromName(name string) reflect.Type {
 	switch strings.ToLower(name) {
-	case "serial", "bigserial", "int", "bigint":
+	case "serial", "bigserial", "int", "integer", "bigint":
 		var v int64
 		return reflect.TypeOf(v)
 	case "bool", "boolean":

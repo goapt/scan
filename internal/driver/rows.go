@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/proullon/ramsql/engine/agnostic"
+	"github.com/blockloop/scan/v2/internal/engine/agnostic"
 )
 
 // Rows implements the sql/driver Rows interface

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/proullon/ramsql/engine/log"
+	"github.com/blockloop/scan/v2/internal/engine/log"
 )
 
 type PredicateType int

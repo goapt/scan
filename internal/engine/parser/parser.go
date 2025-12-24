@@ -6,7 +6,7 @@ package parser
 import (
 	"fmt"
 
-	"github.com/proullon/ramsql/engine/log"
+	"github.com/blockloop/scan/v2/internal/engine/log"
 )
 
 // The parser structure holds the parser's internal state.
@@ -681,7 +681,7 @@ func (p *parser) parseJoin() (*Decl, error) {
 	}
 	onDecl.Add(equalAttr)
 
-	//ATTRIBUTE
+	// ATTRIBUTE
 	rightAttributeDecl, err := p.parseAttribute()
 	if err != nil {
 		return nil, err
