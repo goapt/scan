@@ -19,17 +19,6 @@ var (
 	ScannerMapper = func(name string) string { return toTitleCase(name) }
 )
 
-// RowsScanner is a database scanner for many rows. It is most commonly the
-// result of *sql.DB Query(...).
-type RowsScanner interface {
-	Close() error
-	Scan(dest ...any) error
-	Columns() ([]string, error)
-	ColumnTypes() ([]*sql.ColumnType, error)
-	Err() error
-	Next() bool
-}
-
 // toTitleCase converts a string to title case (first letter capitalized)
 func toTitleCase(s string) string {
 	if s == "" {
@@ -59,7 +48,7 @@ func capitalizeFirst(s string) string {
 
 // Row scans a single row and returns a value of type T.
 // It requires that you use db.Query and not db.QueryRow, because QueryRow does not return column names.
-func Row[T any](r RowsScanner) (T, error) {
+func Row[T any](r *sql.Rows) (T, error) {
 	var zero T
 	items, err := rowsGeneric[T](r)
 	if err != nil {
@@ -72,11 +61,11 @@ func Row[T any](r RowsScanner) (T, error) {
 }
 
 // Rows scans sql rows into a slice of T.
-func Rows[T any](r RowsScanner) ([]T, error) {
+func Rows[T any](r *sql.Rows) ([]T, error) {
 	return rowsGeneric[T](r)
 }
 
-func rowsGeneric[T any](r RowsScanner) ([]T, error) {
+func rowsGeneric[T any](r *sql.Rows) ([]T, error) {
 	cols, err := r.Columns()
 	if err != nil {
 		return nil, err

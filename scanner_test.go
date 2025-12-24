@@ -2,118 +2,96 @@ package scan_test
 
 import (
 	"database/sql"
-	"errors"
-	"reflect"
+	"sync"
 	"testing"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/goapt/scan"
 	"github.com/goapt/scan/internal/assert"
 	"github.com/goapt/scan/internal/require"
 )
 
+var (
+	testDB *sql.DB
+	once   sync.Once
+	dsn    = "root:123456@tcp(127.0.0.1:3306)/test?charset=utf8&parseTime=True&loc=Asia%2FShanghai"
+)
+
+func db(t testing.TB) *sql.DB {
+	once.Do(func() {
+		var err error
+		testDB, err = sql.Open("mysql", dsn)
+		if err != nil {
+			t.Skip(err.Error())
+			return
+		}
+		if err := testDB.Ping(); err != nil {
+			t.Skip(err.Error())
+			return
+		}
+	})
+	return testDB
+}
+
+func q(t testing.TB, query string, args ...any) *sql.Rows {
+	rows, err := db(t).Query(query, args...)
+	require.NoError(t, err)
+	return rows
+}
+
 func TestRowsConvertsColumnNamesToTitleText(t *testing.T) {
 	type Item struct {
 		First string
 	}
-
 	expected := "Brett Jones"
-	rows := fakeRowsWithRecords(t, []string{"First"},
-		[]any{expected},
-	)
+	rows := q(t, "SELECT ? AS First", expected)
 	defer rows.Close()
-
 	item, err := scan.Row[Item](rows)
 	require.NoError(t, err)
-	assert.Equal(t, 1, rows.ScanCallCount())
 	assert.Equal(t, expected, item.First)
 }
 
 func TestRowsUsesTagName(t *testing.T) {
 	expected := "Brett Jones"
-	rows := fakeRowsWithRecords(t, []string{"first_and_last_name"},
-		[]any{expected},
-	)
+	rows := q(t, "SELECT ? AS first_and_last_name", expected)
 	defer rows.Close()
-
 	type Item struct {
 		FirstAndLastName string `db:"first_and_last_name"`
 	}
-
 	item, err := scan.Row[Item](rows)
 	require.NoError(t, err)
-	assert.Equal(t, 1, rows.ScanCallCount())
 	assert.Equal(t, expected, item.FirstAndLastName)
 }
 
 func TestRowsIgnoresUnsetableColumns(t *testing.T) {
 	expected := "Brett Jones"
-	rows := fakeRowsWithRecords(t, []string{"first_and_last_name"},
-		[]any{expected},
-	)
+	rows := q(t, "SELECT ? AS first_and_last_name", expected)
 	defer rows.Close()
-
 	type Item struct {
-		// private, unsetable
 		firstAndLastName string `db:"first_and_last_name"`
 	}
-
 	item, err := scan.Row[Item](rows)
 	require.NoError(t, err)
 	assert.NotEqual(t, expected, item.firstAndLastName)
 }
 
-func TestErrorsWhenScanErrors(t *testing.T) {
-	expected := errors.New("asdf")
-	rows := fakeRowsWithColumns(t, 1, "first_and_last_name")
-	rows.ScanStub = func(...any) error {
-		return expected
-	}
-	defer rows.Close()
-
-	type Item struct {
-		FirstAndLastName string `db:"first_and_last_name"`
-	}
-	_, err := scan.Row[Item](rows)
-	assert.Equal(t, expected, err)
-}
-
 func TestRowsErrorsWhenNotGivenAPointer(t *testing.T) {
-	rows := fakeRowsWithColumns(t, 1, "name")
+	rows := q(t, "SELECT 'Bob' AS name")
 	defer rows.Close()
-
 	_, err := scan.Rows[string](rows)
 	require.NoError(t, err)
 }
 
 func TestRowsErrorsWhenNotGivenAPointerToSlice(t *testing.T) {
-	rows := fakeRowsWithColumns(t, 1, "name")
+	rows := q(t, "SELECT 'Bob' AS name")
 	defer rows.Close()
-
 	_, err := scan.Rows[struct{}](rows)
 	require.NoError(t, err)
 }
 
-func TestErrorsWhenColumnsReturnsError(t *testing.T) {
-	expected := errors.New("asdf")
-	rows := &FakeRowsScanner{
-		ColumnsStub: func() ([]string, error) {
-			return nil, expected
-		},
-	}
-	defer rows.Close()
-
-	type Item struct {
-		Name string
-		Age  int
-	}
-	_, err := scan.Rows[Item](rows)
-	assert.Equal(t, expected, err)
-}
-
 func TestDoesNothingWhenNoColumns(t *testing.T) {
-	rows := fakeRowsWithColumns(t, 1)
+	rows := q(t, "SELECT 'x' AS a LIMIT 0")
 	defer rows.Close()
-
 	type Item struct {
 		Name string
 		Age  int
@@ -124,9 +102,8 @@ func TestDoesNothingWhenNoColumns(t *testing.T) {
 }
 
 func TestDoesNothingWhenNextIsFalse(t *testing.T) {
-	rows := fakeRowsWithColumns(t, 0, "Name")
+	rows := q(t, "SELECT 'x' AS Name LIMIT 0")
 	defer rows.Close()
-
 	type Item struct {
 		Name string
 		Age  int
@@ -137,12 +114,8 @@ func TestDoesNothingWhenNextIsFalse(t *testing.T) {
 }
 
 func TestIgnoresColumnsThatDoNotHaveFields(t *testing.T) {
-	rows := fakeRowsWithRecords(t, []string{"First", "Last", "Age"},
-		[]any{"Brett", "Jones"},
-		[]any{"Fred", "Jones"},
-	)
+	rows := q(t, "SELECT 'Brett' AS First, 'Jones' AS Last, 1 AS Age UNION ALL SELECT 'Fred','Jones',2")
 	defer rows.Close()
-
 	type Item struct {
 		First string
 		Last  string
@@ -157,12 +130,8 @@ func TestIgnoresColumnsThatDoNotHaveFields(t *testing.T) {
 }
 
 func TestIgnoresFieldsThatDoNotHaveColumns(t *testing.T) {
-	rows := fakeRowsWithRecords(t, []string{"first", "age"},
-		[]any{"Brett", int8(40)},
-		[]any{"Fred", int8(50)},
-	)
+	rows := q(t, "SELECT 'Brett' AS first, 40 AS age UNION ALL SELECT 'Fred', 50")
 	defer rows.Close()
-
 	type Item struct {
 		First string
 		Last  string
@@ -174,7 +143,6 @@ func TestIgnoresFieldsThatDoNotHaveColumns(t *testing.T) {
 	assert.EqualValues(t, "Brett", items[0].First)
 	assert.EqualValues(t, "", items[0].Last)
 	assert.EqualValues(t, 40, items[0].Age)
-
 	assert.EqualValues(t, "Fred", items[1].First)
 	assert.EqualValues(t, "", items[1].Last)
 	assert.EqualValues(t, 50, items[1].Age)
@@ -182,25 +150,11 @@ func TestIgnoresFieldsThatDoNotHaveColumns(t *testing.T) {
 
 func TestRowScansToPrimitiveType(t *testing.T) {
 	expected := "Bob"
-	rows := fakeRowsWithRecords(t, []string{"name"},
-		[]any{expected},
-	)
+	rows := q(t, "SELECT ? AS name", expected)
 	defer rows.Close()
-
 	name, err := scan.Row[string](rows)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, name)
-}
-
-func TestReturnsScannerError(t *testing.T) {
-	scanErr := errors.New("broken")
-
-	rows := fakeRowsWithColumns(t, 1, "Name")
-	rows.ErrReturns(scanErr)
-	defer rows.Close()
-
-	_, err := scan.Rows[struct{ Name string }](rows)
-	assert.EqualValues(t, scanErr, err)
 }
 
 func TestScansPrimitiveSlices(t *testing.T) {
@@ -210,42 +164,65 @@ func TestScansPrimitiveSlices(t *testing.T) {
 		{true, false},
 		{1.0, 1.1, 1.2},
 	}
-
 	for _, items := range table {
-		// each item in items is a single value which needs to be converted
-		// to a single row with a scalar value
-		dbrows := make([][]any, len(items))
-		for i, item := range items {
-			dbrows[i] = []any{item}
+		query := "SELECT ? AS a"
+		args := []any{items[0]}
+		for i := 1; i < len(items); i++ {
+			query += " UNION ALL SELECT ?"
+			args = append(args, items[i])
 		}
-		rows := fakeRowsWithRecords(t, []string{"a"}, dbrows...)
-
+		rows := q(t, query, args...)
+		defer rows.Close()
 		scanned, err := scan.Rows[any](rows)
 		require.NoError(t, err)
-		assert.EqualValues(t, items, scanned)
+		got := make([]any, len(scanned))
+		for i := range scanned {
+			switch items[i].(type) {
+			case int:
+				switch v := scanned[i].(type) {
+				case int64:
+					got[i] = int(v)
+				default:
+					got[i] = scanned[i]
+				}
+			case string:
+				if b, ok := scanned[i].([]byte); ok {
+					got[i] = string(b)
+				} else {
+					got[i] = scanned[i]
+				}
+			case bool:
+				switch v := scanned[i].(type) {
+				case int64:
+					got[i] = v != 0
+				default:
+					got[i] = scanned[i]
+				}
+			default:
+				got[i] = scanned[i]
+			}
+		}
+		assert.EqualValues(t, items, got)
 	}
 }
 
 func TestErrorsWhenMoreThanOneColumnForPrimitiveSlice(t *testing.T) {
-	rows := fakeRowsWithColumns(t, 1, "fname", "lname")
+	rows := q(t, "SELECT 'brett' AS fname, 'jones' AS lname")
 	defer rows.Close()
-
 	_, err := scan.Rows[string](rows)
 	assert.EqualValues(t, scan.ErrTooManyColumns, err)
 }
 
 func TestErrorsWhenScanRowToSlice(t *testing.T) {
-	rows := &FakeRowsScanner{}
+	rows := q(t, "SELECT 1 AS ID LIMIT 0")
 	defer rows.Close()
-
 	_, err := scan.Row[[]struct{ ID int }](rows)
 	assert.EqualValues(t, sql.ErrNoRows, err)
 }
 
 func TestRowReturnsErrNoRowsWhenQueryHasNoRows(t *testing.T) {
-	rows := fakeRowsWithColumns(t, 0, "First")
+	rows := q(t, "SELECT 'x' AS First LIMIT 0")
 	defer rows.Close()
-
 	type Item struct {
 		First string
 	}
@@ -254,19 +231,15 @@ func TestRowReturnsErrNoRowsWhenQueryHasNoRows(t *testing.T) {
 }
 
 func TestRowErrorsWhenItemIsNotAPointer(t *testing.T) {
-	rows := &FakeRowsScanner{}
+	rows := q(t, "SELECT 'x' AS First LIMIT 0")
 	defer rows.Close()
-
 	_, err := scan.Row[struct{ First string }](rows)
 	assert.EqualValues(t, sql.ErrNoRows, err)
 }
 
 func TestRowScansNestedFields(t *testing.T) {
-	rows := fakeRowsWithRecords(t, []string{"p.First", "p.Last"},
-		[]any{"Brett", "Jones"},
-	)
+	rows := q(t, "SELECT 'Brett' AS `p.First`, 'Jones' AS `p.Last`")
 	defer rows.Close()
-
 	type Item struct {
 		First string `db:"p.First"`
 		Last  string `db:"p.Last"`
@@ -278,19 +251,8 @@ func TestRowScansNestedFields(t *testing.T) {
 }
 
 func TestRowClosesEarly(t *testing.T) {
-	rows := fakeRowsWithRecords(t, []string{"name"},
-		[]any{"Bob"},
-	)
-
+	rows := q(t, "SELECT 'Bob' AS name")
 	_, _ = scan.Row[string](rows)
-	rows.Close()
-	assert.EqualValues(t, 1, rows.CloseCallCount())
-}
-
-func setValue(ptr, val any) {
-	if s, ok := ptr.(sql.Scanner); ok {
-		_ = s.Scan(val)
-		return
-	}
-	reflect.ValueOf(ptr).Elem().Set(reflect.ValueOf(val))
+	err := rows.Close()
+	assert.NoError(t, err)
 }

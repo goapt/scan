@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - "**"
+
+jobs:
+  build:
+    name: go test
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: 123456
+          MYSQL_DATABASE: test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -p123456 || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=30
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ["1.23", "1.24", "1.25"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          cache: true
+
+      - name: Verify MySQL is reachable
+        run: |
+          for i in {1..60}; do
+            (echo > /dev/tcp/127.0.0.1/3306) >/dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          echo "MySQL is not reachable on 127.0.0.1:3306"
+          exit 1
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.6
+
+      - name: Test
+        env:
+          MYSQL_DSN: root:123456@tcp(127.0.0.1:3306)/test?charset=utf8&parseTime=True&loc=Asia%2FShanghai
+        run: |
+          go mod download
+          go test -v -coverprofile=.coverprofile .
+
+      - name: Report coveralls.io
+        uses: shogo82148/actions-goveralls@v1
+        with:
+          path-to-profile: .coverprofile
+          flag-name: Go-${{ matrix.go }}
