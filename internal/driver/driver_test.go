@@ -1045,7 +1045,7 @@ func TestDistinct(t *testing.T) {
 		}
 	}
 
-	testDistinct := func(t *testing.T, query string, exp int, dest ...interface{}) {
+	testDistinct := func(t *testing.T, query string, exp int, dest ...any) {
 		rows, err := db.Query(query)
 		if err != nil {
 			t.Fatalf("sql.Query: %s", err)

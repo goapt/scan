@@ -253,7 +253,7 @@ func TestColumnsStoresOneCacheEntryPerInstance(t *testing.T) {
 	}
 
 	before := 0
-	columnsCache.Range(func(key interface{}, value interface{}) bool {
+	columnsCache.Range(func(key any, value any) bool {
 		before += 1
 		return true
 	})
@@ -264,7 +264,7 @@ func TestColumnsStoresOneCacheEntryPerInstance(t *testing.T) {
 	}
 
 	after := 0
-	columnsCache.Range(func(key interface{}, value interface{}) bool {
+	columnsCache.Range(func(key any, value any) bool {
 		after += 1
 		return true
 	})

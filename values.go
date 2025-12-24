@@ -11,8 +11,8 @@ var valuesCache cache = &sync.Map{}
 // Values scans a struct and returns the values associated with the columns
 // provided. Only simple value types are supported (i.e. Bool, Ints, Uints,
 // Floats, Interface, String)
-func Values(cols []string, v interface{}) ([]interface{}, error) {
-	vals := make([]interface{}, len(cols))
+func Values(cols []string, v any) ([]any, error) {
+	vals := make([]any, len(cols))
 	model, err := reflectValue(v)
 	if err != nil {
 		return nil, fmt.Errorf("values: %w", err)

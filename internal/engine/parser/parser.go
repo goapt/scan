@@ -60,7 +60,7 @@ type Instruction struct {
 }
 
 // PrettyPrint prints instruction's declarations on console with indentation
-func (i Instruction) PrettyPrint(printer func(fmt string, varargs ...interface{})) {
+func (i Instruction) PrettyPrint(printer func(fmt string, varargs ...any)) {
 	for _, d := range i.Decls {
 		d.Stringy(0, printer)
 	}

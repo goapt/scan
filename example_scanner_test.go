@@ -97,8 +97,8 @@ func ExampleRowStrict_nested() {
 		Name string `db:"company.name"`
 	}
 	type personStruct struct {
-		ID      int           `db:"person.id"`
-		Name    string        `db:"person.name"`
+		ID      int    `db:"person.id"`
+		Name    string `db:"person.name"`
 		Company companyStruct
 	}
 	person, err := scan.RowStrict[personStruct](rows)

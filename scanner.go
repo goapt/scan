@@ -121,12 +121,12 @@ func rowsGeneric[T any](r RowsScanner, strict bool) ([]T, error) {
 	for r.Next() {
 		itemVal := reflect.New(itemType).Elem()
 
-		var pointers []interface{}
+		var pointers []any
 		if isPrimitive {
 			if len(cols) > 1 {
 				return nil, ErrTooManyColumns
 			}
-			pointers = []interface{}{itemVal.Addr().Interface()}
+			pointers = []any{itemVal.Addr().Interface()}
 		} else {
 			pointers = structPointers(itemVal, cols, strict)
 		}
@@ -161,8 +161,8 @@ func initFieldTag(sliceItem reflect.Value, fieldTagMap *map[string]reflect.Value
 	}
 }
 
-func structPointers(sliceItem reflect.Value, cols []string, strict bool) []interface{} {
-	pointers := make([]interface{}, 0, len(cols))
+func structPointers(sliceItem reflect.Value, cols []string, strict bool) []any {
+	pointers := make([]any, 0, len(cols))
 	fieldTag := make(map[string]reflect.Value, len(cols))
 	initFieldTag(sliceItem, &fieldTag)
 
@@ -181,7 +181,7 @@ func structPointers(sliceItem reflect.Value, cols []string, strict bool) []inter
 			// have to add if we found a column because Scan() requires
 			// len(cols) arguments or it will error. This way we can scan to
 			// a useless pointer
-			var nothing interface{}
+			var nothing any
 			pointers = append(pointers, &nothing)
 			continue
 		}

@@ -6,7 +6,7 @@ import "database/sql"
 // result of *sql.DB Query(...).
 type RowsScanner interface {
 	Close() error
-	Scan(dest ...interface{}) error
+	Scan(dest ...any) error
 	Columns() ([]string, error)
 	ColumnTypes() ([]*sql.ColumnType, error)
 	Err() error
@@ -15,9 +15,9 @@ type RowsScanner interface {
 
 // cache is an interface for a sync.Map that is used for cache internally
 type cache interface {
-	Delete(key interface{})
-	Load(key interface{}) (value interface{}, ok bool)
-	LoadOrStore(key interface{}, value interface{}) (actual interface{}, loaded bool)
-	Range(f func(key interface{}, value interface{}) bool)
-	Store(key interface{}, value interface{})
+	Delete(key any)
+	Load(key any) (value any, ok bool)
+	LoadOrStore(key any, value any) (actual any, loaded bool)
+	Range(f func(key any, value any) bool)
+	Store(key any, value any)
 }

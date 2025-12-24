@@ -20,7 +20,7 @@ func TestRowsConvertsColumnNamesToTitleText(t *testing.T) {
 
 	expected := "Brett Jones"
 	rows := fakeRowsWithRecords(t, []string{"First"},
-		[]interface{}{expected},
+		[]any{expected},
 	)
 
 	item, err := scan.Row[Item](rows)
@@ -32,7 +32,7 @@ func TestRowsConvertsColumnNamesToTitleText(t *testing.T) {
 func TestRowsUsesTagName(t *testing.T) {
 	expected := "Brett Jones"
 	rows := fakeRowsWithRecords(t, []string{"first_and_last_name"},
-		[]interface{}{expected},
+		[]any{expected},
 	)
 
 	type Item struct {
@@ -48,7 +48,7 @@ func TestRowsUsesTagName(t *testing.T) {
 func TestRowsIgnoresUnsetableColumns(t *testing.T) {
 	expected := "Brett Jones"
 	rows := fakeRowsWithRecords(t, []string{"first_and_last_name"},
-		[]interface{}{expected},
+		[]any{expected},
 	)
 
 	type Item struct {
@@ -64,7 +64,7 @@ func TestRowsIgnoresUnsetableColumns(t *testing.T) {
 func TestErrorsWhenScanErrors(t *testing.T) {
 	expected := errors.New("asdf")
 	rows := fakeRowsWithColumns(t, 1, "first_and_last_name")
-	rows.ScanStub = func(...interface{}) error {
+	rows.ScanStub = func(...any) error {
 		return expected
 	}
 
@@ -131,8 +131,8 @@ func TestDoesNothingWhenNextIsFalse(t *testing.T) {
 
 func TestIgnoresColumnsThatDoNotHaveFields(t *testing.T) {
 	rows := fakeRowsWithRecords(t, []string{"First", "Last", "Age"},
-		[]interface{}{"Brett", "Jones"},
-		[]interface{}{"Fred", "Jones"},
+		[]any{"Brett", "Jones"},
+		[]any{"Fred", "Jones"},
 	)
 
 	type Item struct {
@@ -150,8 +150,8 @@ func TestIgnoresColumnsThatDoNotHaveFields(t *testing.T) {
 
 func TestIgnoresFieldsThatDoNotHaveColumns(t *testing.T) {
 	rows := fakeRowsWithRecords(t, []string{"first", "age"},
-		[]interface{}{"Brett", int8(40)},
-		[]interface{}{"Fred", int8(50)},
+		[]any{"Brett", int8(40)},
+		[]any{"Fred", int8(50)},
 	)
 
 	type Item struct {
@@ -174,7 +174,7 @@ func TestIgnoresFieldsThatDoNotHaveColumns(t *testing.T) {
 func TestRowScansToPrimitiveType(t *testing.T) {
 	expected := "Bob"
 	rows := fakeRowsWithRecords(t, []string{"name"},
-		[]interface{}{expected},
+		[]any{expected},
 	)
 
 	name, err := scan.Row[string](rows)
@@ -193,7 +193,7 @@ func TestReturnsScannerError(t *testing.T) {
 }
 
 func TestScansPrimitiveSlices(t *testing.T) {
-	table := [][]interface{}{
+	table := [][]any{
 		{1, 2, 3},
 		{"brett", "fred", "geoff"},
 		{true, false},
@@ -203,13 +203,13 @@ func TestScansPrimitiveSlices(t *testing.T) {
 	for _, items := range table {
 		// each item in items is a single value which needs to be converted
 		// to a single row with a scalar value
-		dbrows := make([][]interface{}, len(items))
+		dbrows := make([][]any, len(items))
 		for i, item := range items {
-			dbrows[i] = []interface{}{item}
+			dbrows[i] = []any{item}
 		}
 		rows := fakeRowsWithRecords(t, []string{"a"}, dbrows...)
 
-		scanned, err := scan.Rows[interface{}](rows)
+		scanned, err := scan.Rows[any](rows)
 		require.NoError(t, err)
 		assert.EqualValues(t, items, scanned)
 	}
@@ -248,7 +248,7 @@ func TestRowErrorsWhenItemIsNotAPointer(t *testing.T) {
 
 func TestRowStrictIgnoresFieldsWithoutDBTag(t *testing.T) {
 	rows := fakeRowsWithRecords(t, []string{"First", "Last"},
-		[]interface{}{"Brett", "Jones"},
+		[]any{"Brett", "Jones"},
 	)
 
 	type Item struct {
@@ -263,7 +263,7 @@ func TestRowStrictIgnoresFieldsWithoutDBTag(t *testing.T) {
 
 func TestRowScansNestedFields(t *testing.T) {
 	rows := fakeRowsWithRecords(t, []string{"p.First", "p.Last"},
-		[]interface{}{"Brett", "Jones"},
+		[]any{"Brett", "Jones"},
 	)
 
 	type Item struct {
@@ -278,7 +278,7 @@ func TestRowScansNestedFields(t *testing.T) {
 
 func TestRowStrictScansNestedFields(t *testing.T) {
 	rows := fakeRowsWithRecords(t, []string{"p.First", "p.Last"},
-		[]interface{}{"Brett", "Jones"},
+		[]any{"Brett", "Jones"},
 	)
 
 	type Item struct {
@@ -293,8 +293,8 @@ func TestRowStrictScansNestedFields(t *testing.T) {
 
 func TestRowsStrictIgnoresFieldsWithoutDBTag(t *testing.T) {
 	rows := fakeRowsWithRecords(t, []string{"First", "Last"},
-		[]interface{}{"Brett", "Jones"},
-		[]interface{}{"Fred", "Jones"},
+		[]any{"Brett", "Jones"},
+		[]any{"Fred", "Jones"},
 	)
 
 	type Item struct {
@@ -312,7 +312,7 @@ func TestRowsStrictIgnoresFieldsWithoutDBTag(t *testing.T) {
 
 func TestRowClosesEarly(t *testing.T) {
 	rows := fakeRowsWithRecords(t, []string{"name"},
-		[]interface{}{"Bob"},
+		[]any{"Bob"},
 	)
 
 	_, _ = scan.Row[string](rows)
@@ -329,7 +329,7 @@ func Test_OnAutoCloseErrorIsCalledWhenRowsCloseErrors(t *testing.T) {
 	}
 
 	rows := fakeRowsWithRecords(t, []string{"name"},
-		[]interface{}{"Bob"},
+		[]any{"Bob"},
 	)
 
 	rows.CloseReturns(expected)
@@ -339,29 +339,29 @@ func Test_OnAutoCloseErrorIsCalledWhenRowsCloseErrors(t *testing.T) {
 	assert.EqualValues(t, 1, calls)
 }
 
-func setValue(ptr, val interface{}) {
+func setValue(ptr, val any) {
 	reflect.ValueOf(ptr).Elem().Set(reflect.ValueOf(val))
 }
 
 type simpleQueue struct {
-	items []interface{}
+	items []any
 	m     *sync.Mutex
 }
 
-func newSimpleQueue(items []interface{}) *simpleQueue {
+func newSimpleQueue(items []any) *simpleQueue {
 	return &simpleQueue{
 		items: items,
 		m:     &sync.Mutex{},
 	}
 }
 
-func (q *simpleQueue) Push(v interface{}) {
+func (q *simpleQueue) Push(v any) {
 	q.m.Lock()
 	defer q.m.Unlock()
-	q.items = append([]interface{}{v}, q.items...)
+	q.items = append([]any{v}, q.items...)
 }
 
-func (q *simpleQueue) Pop() (v interface{}, ok bool) {
+func (q *simpleQueue) Pop() (v any, ok bool) {
 	q.m.Lock()
 	defer q.m.Unlock()
 	if len(q.items) == 0 {

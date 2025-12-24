@@ -47,18 +47,18 @@ type cacheKey struct {
 // db struct tag, or the field name. Any field or struct
 // tag that matches a string within the excluded list
 // will be excluded from the result.
-func Columns(v interface{}, excluded ...string) ([]string, error) {
+func Columns(v any, excluded ...string) ([]string, error) {
 	return columns(v, false, excluded...)
 }
 
 // ColumnsStrict is identical to Columns, but it only
 // searches struct tags and excludes fields not tagged
 // with the db struct tag.
-func ColumnsStrict(v interface{}, excluded ...string) ([]string, error) {
+func ColumnsStrict(v any, excluded ...string) ([]string, error) {
 	return columns(v, true, excluded...)
 }
 
-func columns(v interface{}, strict bool, excluded ...string) ([]string, error) {
+func columns(v any, strict bool, excluded ...string) ([]string, error) {
 	model, err := reflectValue(v)
 	if err != nil {
 		return nil, fmt.Errorf("columns: %w", err)
@@ -143,7 +143,7 @@ func isExcluded(name string, excluded ...string) bool {
 	return false
 }
 
-func reflectValue(v interface{}) (reflect.Value, error) {
+func reflectValue(v any) (reflect.Value, error) {
 	vType := reflect.TypeOf(v)
 	vKind := vType.Kind()
 	if vKind != reflect.Ptr {

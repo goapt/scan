@@ -20,13 +20,13 @@ func fakeRowsWithColumns(t testing.TB, rowCnt int, cols ...string) *FakeRowsScan
 	return r
 }
 
-var record map[string]interface{}
+var record map[string]any
 
 // fakeRowsWithRecords creates a fake row scanner that acts like a sql.DB.Rows
 // scanner. You can call Scan(&item.Name, &item.Age), etc
-func fakeRowsWithRecords(t testing.TB, cols []string, rows ...[]interface{}) *FakeRowsScanner {
+func fakeRowsWithRecords(t testing.TB, cols []string, rows ...[]any) *FakeRowsScanner {
 	r := fakeRowsWithColumns(t, len(rows), cols...)
-	r.ScanStub = func(ps ...interface{}) error {
+	r.ScanStub = func(ps ...any) error {
 		i := r.ScanCallCount() - 1
 		if i > len(rows) {
 			return nil
@@ -94,10 +94,10 @@ type FakeRowsScanner struct {
 	nextReturnsOnCall map[int]struct {
 		result1 bool
 	}
-	ScanStub        func(...interface{}) error
+	ScanStub        func(...any) error
 	scanMutex       sync.RWMutex
 	scanArgsForCall []struct {
-		arg1 []interface{}
+		arg1 []any
 	}
 	scanReturns struct {
 		result1 error
@@ -105,7 +105,7 @@ type FakeRowsScanner struct {
 	scanReturnsOnCall map[int]struct {
 		result1 error
 	}
-	invocations      map[string][][]interface{}
+	invocations      map[string][][]any
 	invocationsMutex sync.RWMutex
 }
 
@@ -113,7 +113,7 @@ func (fake *FakeRowsScanner) Close() error {
 	fake.closeMutex.Lock()
 	ret, specificReturn := fake.closeReturnsOnCall[len(fake.closeArgsForCall)]
 	fake.closeArgsForCall = append(fake.closeArgsForCall, struct{}{})
-	fake.recordInvocation("Close", []interface{}{})
+	fake.recordInvocation("Close", []any{})
 	fake.closeMutex.Unlock()
 	if fake.CloseStub != nil {
 		return fake.CloseStub()
@@ -164,7 +164,7 @@ func (fake *FakeRowsScanner) ColumnTypes() ([]*sql.ColumnType, error) {
 	fake.columnTypesMutex.Lock()
 	ret, specificReturn := fake.columnTypesReturnsOnCall[len(fake.columnTypesArgsForCall)]
 	fake.columnTypesArgsForCall = append(fake.columnTypesArgsForCall, struct{}{})
-	fake.recordInvocation("ColumnTypes", []interface{}{})
+	fake.recordInvocation("ColumnTypes", []any{})
 	fake.columnTypesMutex.Unlock()
 	if fake.ColumnTypesStub != nil {
 		return fake.ColumnTypesStub()
@@ -218,7 +218,7 @@ func (fake *FakeRowsScanner) Columns() ([]string, error) {
 	fake.columnsMutex.Lock()
 	ret, specificReturn := fake.columnsReturnsOnCall[len(fake.columnsArgsForCall)]
 	fake.columnsArgsForCall = append(fake.columnsArgsForCall, struct{}{})
-	fake.recordInvocation("Columns", []interface{}{})
+	fake.recordInvocation("Columns", []any{})
 	fake.columnsMutex.Unlock()
 	if fake.ColumnsStub != nil {
 		return fake.ColumnsStub()
@@ -272,7 +272,7 @@ func (fake *FakeRowsScanner) Err() error {
 	fake.errMutex.Lock()
 	ret, specificReturn := fake.errReturnsOnCall[len(fake.errArgsForCall)]
 	fake.errArgsForCall = append(fake.errArgsForCall, struct{}{})
-	fake.recordInvocation("Err", []interface{}{})
+	fake.recordInvocation("Err", []any{})
 	fake.errMutex.Unlock()
 	if fake.ErrStub != nil {
 		return fake.ErrStub()
@@ -323,7 +323,7 @@ func (fake *FakeRowsScanner) Next() bool {
 	fake.nextMutex.Lock()
 	ret, specificReturn := fake.nextReturnsOnCall[len(fake.nextArgsForCall)]
 	fake.nextArgsForCall = append(fake.nextArgsForCall, struct{}{})
-	fake.recordInvocation("Next", []interface{}{})
+	fake.recordInvocation("Next", []any{})
 	fake.nextMutex.Unlock()
 	if fake.NextStub != nil {
 		return fake.NextStub()
@@ -370,13 +370,13 @@ func (fake *FakeRowsScanner) NextReturnsOnCall(i int, result1 bool) {
 	}{result1}
 }
 
-func (fake *FakeRowsScanner) Scan(arg1 ...interface{}) error {
+func (fake *FakeRowsScanner) Scan(arg1 ...any) error {
 	fake.scanMutex.Lock()
 	ret, specificReturn := fake.scanReturnsOnCall[len(fake.scanArgsForCall)]
 	fake.scanArgsForCall = append(fake.scanArgsForCall, struct {
-		arg1 []interface{}
+		arg1 []any
 	}{arg1})
-	fake.recordInvocation("Scan", []interface{}{arg1})
+	fake.recordInvocation("Scan", []any{arg1})
 	fake.scanMutex.Unlock()
 	if fake.ScanStub != nil {
 		return fake.ScanStub(arg1...)
@@ -394,13 +394,13 @@ func (fake *FakeRowsScanner) ScanCallCount() int {
 	return len(fake.scanArgsForCall)
 }
 
-func (fake *FakeRowsScanner) ScanCalls(stub func(...interface{}) error) {
+func (fake *FakeRowsScanner) ScanCalls(stub func(...any) error) {
 	fake.scanMutex.Lock()
 	defer fake.scanMutex.Unlock()
 	fake.ScanStub = stub
 }
 
-func (fake *FakeRowsScanner) ScanArgsForCall(i int) []interface{} {
+func (fake *FakeRowsScanner) ScanArgsForCall(i int) []any {
 	fake.scanMutex.RLock()
 	defer fake.scanMutex.RUnlock()
 	argsForCall := fake.scanArgsForCall[i]
@@ -430,7 +430,7 @@ func (fake *FakeRowsScanner) ScanReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeRowsScanner) Invocations() map[string][][]interface{} {
+func (fake *FakeRowsScanner) Invocations() map[string][][]any {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.closeMutex.RLock()
@@ -445,21 +445,21 @@ func (fake *FakeRowsScanner) Invocations() map[string][][]interface{} {
 	defer fake.nextMutex.RUnlock()
 	fake.scanMutex.RLock()
 	defer fake.scanMutex.RUnlock()
-	copiedInvocations := map[string][][]interface{}{}
+	copiedInvocations := map[string][][]any{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
 	}
 	return copiedInvocations
 }
 
-func (fake *FakeRowsScanner) recordInvocation(key string, args []interface{}) {
+func (fake *FakeRowsScanner) recordInvocation(key string, args []any) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
-		fake.invocations = map[string][][]interface{}{}
+		fake.invocations = map[string][][]any{}
 	}
 	if fake.invocations[key] == nil {
-		fake.invocations[key] = [][]interface{}{}
+		fake.invocations[key] = [][]any{}
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }

@@ -43,7 +43,7 @@ const (
 
 // Logger defines the logs levels used by RamSQL engine
 type Logger interface {
-	Logf(fmt string, values ...interface{})
+	Logf(fmt string, values ...any)
 }
 
 // SetLevel controls the categories of logs written

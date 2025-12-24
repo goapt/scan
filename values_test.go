@@ -19,7 +19,7 @@ func TestValuesScansOnlyCols(t *testing.T) {
 	vals, err := Values([]string{"Name"}, p)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, []interface{}{"Brett"}, vals)
+	assert.EqualValues(t, []any{"Brett"}, vals)
 }
 
 func TestValuesScansDBTags(t *testing.T) {
@@ -31,7 +31,7 @@ func TestValuesScansDBTags(t *testing.T) {
 	vals, err := Values([]string{"n"}, p)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, []interface{}{"Brett"}, vals)
+	assert.EqualValues(t, []any{"Brett"}, vals)
 }
 
 func TestValuesScansPointerDBTags(t *testing.T) {
@@ -43,7 +43,7 @@ func TestValuesScansPointerDBTags(t *testing.T) {
 	vals, err := Values([]string{"n"}, p)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, []interface{}{ptr("Brett")}, vals)
+	assert.EqualValues(t, []any{ptr("Brett")}, vals)
 }
 
 func TestValuesReturnsNilPointers(t *testing.T) {
@@ -55,7 +55,7 @@ func TestValuesReturnsNilPointers(t *testing.T) {
 	vals, err := Values([]string{"n"}, p)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, []interface{}{(*string)(nil)}, vals)
+	assert.EqualValues(t, []any{(*string)(nil)}, vals)
 }
 
 func TestValuesScansSliceDBTags(t *testing.T) {
@@ -67,7 +67,7 @@ func TestValuesScansSliceDBTags(t *testing.T) {
 	vals, err := Values([]string{"n"}, p)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, []interface{}{[]string{"Brett", "The Big B"}}, vals)
+	assert.EqualValues(t, []any{[]string{"Brett", "The Big B"}}, vals)
 }
 
 func TestValuesScansNilSliceDBTags(t *testing.T) {
@@ -79,7 +79,7 @@ func TestValuesScansNilSliceDBTags(t *testing.T) {
 	vals, err := Values([]string{"n"}, p)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, []interface{}{[]string(nil)}, vals)
+	assert.EqualValues(t, []any{[]string(nil)}, vals)
 }
 
 func TestValuesScansPointerToSliceDBTags(t *testing.T) {
@@ -91,7 +91,7 @@ func TestValuesScansPointerToSliceDBTags(t *testing.T) {
 	vals, err := Values([]string{"n"}, p)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, []interface{}{&names}, vals)
+	assert.EqualValues(t, []any{&names}, vals)
 }
 
 func TestValuesScansNestedFields(t *testing.T) {
@@ -111,7 +111,7 @@ func TestValuesScansNestedFields(t *testing.T) {
 	vals, err := Values([]string{"Name", "Street", "City"}, p)
 	require.NoError(t, err)
 
-	assert.EqualValues(t, []interface{}{"Brett", "123 Main St", "San Francisco"}, vals)
+	assert.EqualValues(t, []any{"Brett", "123 Main St", "San Francisco"}, vals)
 }
 
 func TestValuesReturnsErrorWhenPassingNonPointer(t *testing.T) {
@@ -139,7 +139,7 @@ func TestValuesWorksWithBothTagAndFieldName(t *testing.T) {
 	p := &person{Name: "Brett"}
 	vals, err := Values([]string{"Name", "n"}, p)
 	require.NoError(t, err)
-	assert.EqualValues(t, []interface{}{"Brett", "Brett"}, vals)
+	assert.EqualValues(t, []any{"Brett", "Brett"}, vals)
 }
 
 func TestValuesReturnsAllFieldNames(t *testing.T) {
@@ -165,7 +165,7 @@ func TestValuesReadsFromCacheFirst(t *testing.T) {
 
 	vals, err := Values([]string{"fake"}, &person)
 	require.NoError(t, err)
-	assert.EqualValues(t, []interface{}{"Brett"}, vals)
+	assert.EqualValues(t, []any{"Brett"}, vals)
 }
 
 func TestValuesValidSqlTypes(t *testing.T) {
@@ -181,7 +181,7 @@ func TestValuesValidSqlTypes(t *testing.T) {
 
 	vals, err := Values([]string{"Value", "Expires"}, c)
 	require.NoError(t, err)
-	assert.EqualValues(t, []interface{}{25, tNow}, vals)
+	assert.EqualValues(t, []any{25, tNow}, vals)
 }
 
 func TestValuesValidPointerSqlTypes(t *testing.T) {
@@ -197,7 +197,7 @@ func TestValuesValidPointerSqlTypes(t *testing.T) {
 
 	vals, err := Values([]string{"Value", "Expires"}, c)
 	require.NoError(t, err)
-	assert.EqualValues(t, []interface{}{25, &tNow}, vals)
+	assert.EqualValues(t, []any{25, &tNow}, vals)
 }
 
 func TestValuesDriverValuerImplementers(t *testing.T) {
@@ -215,7 +215,7 @@ func TestValuesDriverValuerImplementers(t *testing.T) {
 
 	vals, err := Values([]string{"Name", "Pet"}, p)
 	require.NoError(t, err)
-	assert.EqualValues(t, []interface{}{"Brett", Pet{Name: "Mila", Species: "dog"}}, vals)
+	assert.EqualValues(t, []any{"Brett", Pet{Name: "Mila", Species: "dog"}}, vals)
 }
 
 // benchmarks

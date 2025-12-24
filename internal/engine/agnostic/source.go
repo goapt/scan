@@ -97,7 +97,7 @@ func (s SeqScanSrc) String() string {
 }
 
 func (s *SeqScanSrc) HasNext() bool {
-    return s.e != nil
+	return s.e != nil
 }
 
 func (s *SeqScanSrc) Next() *list.Element {
