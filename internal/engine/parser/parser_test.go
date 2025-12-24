@@ -1,0 +1,404 @@
+package parser
+
+import (
+	"testing"
+)
+
+func TestParserCreateTableSimple(t *testing.T) {
+	query := `CREATE TABLE account (id INT, email TEXT)`
+	parse(query, 1, t)
+}
+
+func TestParserCreateTableSimpleWithPrimaryKey(t *testing.T) {
+	query := `CREATE TABLE account (id INT PRIMARY KEY, email TEXT)`
+	parse(query, 1, t)
+}
+
+func TestParserCreateTableWithDefaultClause(t *testing.T) {
+	query := `CREATE TABLE account_detail
+	(
+		id INT PRIMARY KEY,
+		email TEXT DEFAULT 'example@example.com'
+	)`
+	parse(query, 1, t)
+}
+
+func TestParserMultipleInstructions(t *testing.T) {
+	query := `CREATE TABLE account (id INT, email TEXT);CREATE TABLE user (id INT, email TEXT)`
+	parse(query, 2, t)
+}
+
+// func TestParserLowerCase(t *testing.T) {
+// 	query := `create table account (id INT PRIMARY KEY NOT NULL)`
+// 	parse(query, 1, t)
+// }
+
+func TestParserComplete(t *testing.T) {
+	query := `CREATE TABLE user
+	(
+    	id INT PRIMARY KEY,
+	    last_name TEXT,
+	    first_name TEXT,
+	    email TEXT,
+	    birth_date DATE,
+	    country TEXT,
+	    town TEXT,
+	    zip_code TEXT
+	)`
+	parse(query, 1, t)
+}
+
+func TestParserCompleteWithBacktickQuotes(t *testing.T) {
+	query := `CREATE TABLE ` + "`" + `user` + "`" + `
+	(
+		` + "`" + `id` + "`" + ` INT PRIMARY KEY,
+		` + "`" + `last_name` + "`" + ` TEXT,
+		` + "`" + `first_name` + "`" + ` TEXT,
+		` + "`" + `email` + "`" + ` TEXT,
+		` + "`" + `birth_date` + "`" + ` DATE,
+		` + "`" + `country` + "`" + ` TEXT,
+		` + "`" + `town` + "`" + ` TEXT,
+		` + "`" + `zip_code` + "`" + ` TEXT
+	)`
+	parse(query, 1, t)
+}
+
+// func TestParserCreateTableWithVarchar(t *testing.T) {
+// 	query := `CREATE TABLE user
+// 	(
+//     	id INT PRIMARY KEY,
+// 	    last_name VARCHAR(100)
+// 	)`
+// 	parse(query, 1, t)
+// }
+
+func TestSelectStar(t *testing.T) {
+	query := `SELECT * FROM account WHERE email = 'foo@bar.com'`
+	parse(query, 1, t)
+}
+
+func TestSelectMultipleAttribute(t *testing.T) {
+	query := `SELECT id, email FROM account WHERE email = 'foo@bar.com'`
+	parse(query, 1, t)
+}
+
+func TestSelectOneAttribute(t *testing.T) {
+	query := `SELECT id FROM account WHERE email = 'foo@bar.com'`
+	parse(query, 1, t)
+}
+
+func TestSelectAttributeWithTable(t *testing.T) {
+	query := `SELECT account.id FROM account WHERE email = 'foo@bar.com'`
+	parse(query, 1, t)
+}
+
+func TestSelectAttributeWithQuotedTable(t *testing.T) {
+	query := `SELECT "account".id FROM account WHERE email = 'foo@bar.com'`
+	parse(query, 1, t)
+}
+
+func TestSelectAttributeWithBacktickQuotedTable(t *testing.T) {
+	query := `SELECT ` + "`" + `account` + "`" + `.id FROM account WHERE email = 'foo@bar.com'`
+	parse(query, 1, t)
+}
+
+func TestSelectAllFromTable(t *testing.T) {
+	query := `SELECT "account".* FROM account WHERE email = 'foo@bar.com'`
+	parse(query, 1, t)
+}
+
+func TestSelectOnePredicate(t *testing.T) {
+	query := `SELECT * FROM account WHERE 1`
+	parse(query, 1, t)
+}
+
+func TestSelectQuotedTableName(t *testing.T) {
+	query := `SELECT * FROM "account" WHERE 1`
+	parse(query, 1, t)
+
+	query = `SELECT * FROM "account"`
+	parse(query, 1, t)
+}
+
+func TestSelectBacktickQuotedTableName(t *testing.T) {
+	query := `SELECT * FROM ` + "`" + `account` + "`" + ` WHERE 1`
+	parse(query, 1, t)
+
+	query = `SELECT * FROM ` + "`" + `account` + "`" + ``
+	parse(query, 1, t)
+}
+
+func TestSelectJoin(t *testing.T) {
+	query := `SELECT address.* FROM address
+	JOIN user_addresses ON address.id=user_addresses.address_id
+	WHERE user_addresses.user_id=1`
+	parse(query, 1, t)
+}
+
+func TestInsertMinimal(t *testing.T) {
+	query := `INSERT INTO account ('email', 'password', 'age') VALUES ('foo@bar.com', 'tititoto', '4')`
+	parse(query, 1, t)
+}
+
+func TestInsertNumber(t *testing.T) {
+	query := `INSERT INTO account ('email', 'password', 'age') VALUES ('foo@bar.com', 'tititoto', 4)`
+	parse(query, 1, t)
+}
+
+func TestInsertNumberWithQuote(t *testing.T) {
+	query := `INSERT INTO "account" ('email', 'password', 'age') VALUES ('foo@bar.com', 'tititoto', 4)`
+	parse(query, 1, t)
+}
+
+func TestInsertNumberWithBacktickQuote(t *testing.T) {
+	query := `INSERT INTO ` + "`" + `account` + "`" + ` ('email', 'password', 'age') VALUES ('foo@bar.com', 'tititoto', 4)`
+	parse(query, 1, t)
+}
+
+func TestSelectNegativeNumber(t *testing.T) {
+	query := `select to_id, date from edges where from_id = -1 and edge_type = 3 order by id desc`
+	parse(query, 1, t)
+}
+
+func TestCreateTableWithKeywordName(t *testing.T) {
+	query := `CREATE TABLE test ("id" bigserial not null primary key, "name" text, "key" text)`
+	parse(query, 1, t)
+}
+
+// func TestInsertStringWithDoubleQuote(t *testing.T) {
+// 	query := `insert into "posts" ("post_id","Created","Title","Body") values (null,12321123,"Hello world !","!");`
+// 	parse(query, 1, t)
+// }
+
+func TestInsertStringWithSimpleQuote(t *testing.T) {
+	query := `insert into "posts" ("post_id","Created","Title","Body") values (null,12321123,'Hello world !','!');`
+	parse(query, 1, t)
+}
+
+// func TestInsertImplicitAttributes(t *testing.T) {
+// 	query := `INSERT INTO account VALUES ('foo@bar.com', 'tititoto', 4)`
+// 	parse(query, 1, t)
+// }
+
+func TestParseDelete(t *testing.T) {
+	query := `delete from "posts"`
+	parse(query, 1, t)
+}
+
+func TestParseUpdate(t *testing.T) {
+	query := `UPDATE account SET email = 'roger@gmail.com' WHERE id = 2`
+	parse(query, 1, t)
+}
+
+func TestUpdateMultipleAttributes(t *testing.T) {
+	query := `update "posts" set "Created"=1435760856063203203, "Title"='Go 1.2 is better than ever', "Body"='Lorem ipsum lorem ipsum' where "post_id"=2`
+	parse(query, 1, t)
+}
+
+func TestParseMultipleJoin(t *testing.T) {
+	query := `SELECT group.id, user.username FROM group JOIN group_user ON group_user.group_id = group.id JOIN user ON user.id = group_user.user_id WHERE group.name = 1`
+	parse(query, 1, t)
+}
+
+func TestParseMultipleOrderBy(t *testing.T) {
+	query := `SELECT group.id, user.username FROM group JOIN group_user ON group_user.group_id = group.id JOIN user ON user.id = group_user.user_id WHERE group.name = 1 ORDER BY group.name, user.username ASC`
+	parse(query, 1, t)
+}
+
+func TestSelectForUpdate(t *testing.T) {
+	query := `SELECT * FROM user WHERE user.id = 1 FOR UPDATE`
+
+	parse(query, 1, t)
+}
+
+func TestUpdateWithQuotedColumns(t *testing.T) {
+	query := `UPDATE "challenges" SET "deleted_at"='2022-07-11 14:52:45.804' WHERE "challenges"."deleted_at" IS NULL`
+
+	parse(query, 1, t)
+}
+
+func TestCreateDefault(t *testing.T) {
+	query := `CREATE TABLE foo (bar BIGINT, riri TEXT, fifi BOOLEAN NOT NULL DEFAULT false)`
+
+	parse(query, 1, t)
+}
+
+func TestCreateDefaultNumerical(t *testing.T) {
+	query := `CREATE TABLE foo (bar BIGINT, riri TEXT, fifi BIGINT NOT NULL DEFAULT 0)`
+
+	parse(query, 1, t)
+}
+
+func TestCreateWithTimestamp(t *testing.T) {
+	query := `CREATE TABLE IF NOT EXISTS "pokemon" (id BIGSERIAL PRIMARY KEY, name TEXT, type TEXT, seen TIMESTAMP WITH TIME ZONE)`
+
+	parse(query, 1, t)
+}
+
+func TestCreateDefaultTimestamp(t *testing.T) {
+	query := `CREATE TABLE IF NOT EXISTS "pokemon" (id BIGSERIAL PRIMARY KEY, name TEXT, type TEXT, seen TIMESTAMP WITH TIME ZONE DEFAULT LOCALTIMESTAMP)`
+
+	parse(query, 1, t)
+}
+
+func TestCreateNumberInNames(t *testing.T) {
+	query := `CREATE TABLE IF NOT EXISTS "pokemon" (id BIGSERIAL PRIMARY KEY, name TEXT, type TEXT, md5sum TEXT)`
+
+	parse(query, 1, t)
+}
+
+func TestOffset(t *testing.T) {
+	query := `SELECT * FROM mytable LIMIT 1 OFFSET 0`
+
+	parse(query, 1, t)
+}
+
+func TestUnique(t *testing.T) {
+	queries := []string{
+		`CREATE TABLE pokemon (id BIGSERIAL, name TEXT UNIQUE NOT NULL)`,
+		`CREATE TABLE pokemon (id BIGSERIAL, name TEXT NOT NULL UNIQUE)`,
+		`CREATE TABLE pokemon_name (id BIGINT, name VARCHAR(255) PRIMARY KEY NOT NULL UNIQUE)`,
+	}
+
+	for _, q := range queries {
+		parse(q, 1, t)
+	}
+}
+
+func TestAlias(t *testing.T) {
+	queries := []string{
+		`SELECT p.test FROM probably_too_long_name AS p WHERE p.id = $1`,
+		`SELECT p.test FROM machin JOIN probably_too_long_name AS p ON p.id = machin.id`,
+	}
+
+	for _, q := range queries {
+		parse(q, 1, t)
+	}
+
+}
+
+func TestDecimal(t *testing.T) {
+	query := `CREATE TABLE IF NOT EXISTS "pokemon" (id BIGSERIAL PRIMARY KEY, fewefwefwe DECIMAL DEFAULT 34.234)`
+
+	parse(query, 1, t)
+}
+
+func TestNow(t *testing.T) {
+	query := `CREATE TABLE IF NOT EXISTS "pokemon" (id BIGSERIAL PRIMARY KEY, test TIMESTAMPZ DEFAULT NOW())`
+
+	parse(query, 1, t)
+}
+
+func TestIndex(t *testing.T) {
+	queries := []string{
+		`CREATE INDEX index_name ON table_name (col1, col2)`,
+		`CREATE UNIQUE INDEX index_name ON table_name (col1, col2)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS index_name ON table_name (col1, col2)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS index_name ON public.table_name (col1, col2 COLLATE NOCASE)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS index_name ON "foo"."table_name" (col1, col2 COLLATE NOCASE)`,
+		`CREATE INDEX IF NOT EXISTS "idx_products_deleted_at" ON "products" ("deleted_at")`,
+	}
+
+	for _, q := range queries {
+		parse(q, 1, t)
+	}
+}
+
+func TestReturning(t *testing.T) {
+	queries := []string{
+		`INSERT INTO test (foo, bar) VALUES ('foo', 'bar') RETURNING id`,
+		`INSERT INTO test (foo, bar) VALUES ('foo', 'bar') RETURNING "id"`,
+	}
+
+	for _, q := range queries {
+		parse(q, 1, t)
+	}
+}
+
+/*
+func TestForeignKey(t *testing.T) {
+	queries := []string{
+		`CREATE TABLE pokemon (id BIGSERIAL, name TEXT NOT NULL UNIQUE)`,
+		`CREATE TABLE pokemon_spell (id BIGINT, name VARCHAR(255), pokemon_id BIGINT REFERENCE pokemon(id))`,
+	}
+
+	for _, q := range queries {
+		parse(q, 1, t)
+	}
+}
+*/
+
+func TestSchema(t *testing.T) {
+	queries := []string{
+		`CREATE SCHEMA foo`,
+		`CREATE SCHEMA "foo"`,
+		`CREATE SCHEMA public`,
+		`CREATE TABLE "foo"."bar" (id BIGSERIAL, baz TEXT)`,
+		`CREATE TABLE public.bar (id BIGSERIAL, baz TEXT)`,
+	}
+
+	for _, q := range queries {
+		i := parse(q, 1, t)
+		d := i[0].Decls[0]
+		if d.Token != CreateToken {
+			t.Errorf("expected CreateToken (%d), got (%d)", CreateToken, d.Token)
+		}
+		if tableD, ok := d.Has(TableToken); ok {
+			if _, ok := tableD.Decl[0].Has(SchemaToken); !ok {
+				t.Errorf("expected TableToken to have Schema (%d) child", SchemaToken)
+				tableD.Stringy(0, t.Logf)
+			}
+		}
+	}
+
+	queries = []string{
+		`DROP TABLE public.bar`,
+		`DROP SCHEMA foo.bar`,
+	}
+
+	for _, q := range queries {
+		i := parse(q, 1, t)
+		d := i[0].Decls[0]
+		if d.Token != DropToken {
+			t.Errorf("expected DropToken (%d), got (%d)", DropToken, d.Token)
+		}
+	}
+}
+
+func TestArguments(t *testing.T) {
+
+	queries := []string{
+		`SELECT * FROM foo WHERE bar = $1 and enabled = true`,
+		`UPDATE foo SET bar = $1, elabled = $2 WHERE bar = $3`,
+		`SELECT * FROM foo WHERE bar = ? and enabled = true`,
+		`UPDATE foo SET bar = ?, elabled = ? WHERE bar = ?`,
+		`UPDATE foo SET bar = :bar, elabled = :enabled WHERE bar = :bar`,
+		`INSERT INTO test (data) VALUES ($1)`,
+		`INSERT INTO test (data) VALUES (?)`,
+	}
+
+	for _, q := range queries {
+		parse(q, 1, t)
+	}
+}
+
+func parse(query string, instructionNumber int, t *testing.T) []Instruction {
+
+	parser := parser{}
+	lexer := lexer{}
+	decls, err := lexer.lex([]byte(query))
+	if err != nil {
+		t.Fatalf("Cannot lex <%s> string: %s", query, err)
+	}
+
+	instructions, err := parser.parse(decls)
+	if err != nil {
+		t.Fatalf("Cannot parse tokens from '%s': %s", query, err)
+	}
+
+	if len(instructions) != instructionNumber {
+		t.Fatalf("Should have parsed %d instructions, got %d", instructionNumber, len(instructions))
+	}
+
+	return instructions
+}
