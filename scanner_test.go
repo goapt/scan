@@ -288,5 +288,9 @@ func TestRowClosesEarly(t *testing.T) {
 }
 
 func setValue(ptr, val any) {
+	if s, ok := ptr.(sql.Scanner); ok {
+		_ = s.Scan(val)
+		return
+	}
 	reflect.ValueOf(ptr).Elem().Set(reflect.ValueOf(val))
 }
