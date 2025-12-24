@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/goapt/scan/internal/assert"
+	"github.com/goapt/scan/internal/require"
 )
 
 func TestValuesScansOnlyCols(t *testing.T) {
@@ -226,7 +226,7 @@ func BenchmarkValuesLargeStruct(b *testing.B) {
 	assert.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {
-		Values(cols, ls)
+		_, _ = Values(cols, ls)
 	}
 }
 

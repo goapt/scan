@@ -1,7 +1,7 @@
 # Scan
 
 ```go
-import "github.com/blockloop/scan/v2"
+import "github.com/goapt/scan"
 ```
 
 ## Examples
@@ -73,7 +73,7 @@ type Person struct {
 	}
 }
 
-person, err := scan.RowStrict[Person](rows)
+person, err := scan.Row[Person](rows)
 
 err = json.NewEncoder(os.Stdout).Encode(&person)
 // Output:
@@ -83,12 +83,6 @@ err = json.NewEncoder(os.Stdout).Encode(&person)
 ### Custom Column Mapping
 
 By default, column names are mapped [to](https://github.com/blockloop/scan/blob/4741cc8ac5746ca7e5893d3b54a3347a7735c168/columns.go#L35) and [from](https://github.com/blockloop/scan/blob/4741cc8ac5746ca7e5893d3b54a3347a7735c168/scanner.go#L33) database column names using basic title case conversion. You can override this behavior by setting `ColumnsMapper` and `ScannerMapper` to custom functions.
-
-### Strict Scanning
-
-Both `Rows` and `Row` have strict alternatives to allow scanning to structs strictly based on their `db` tag.
-Use the generic variants `RowsStrict[T any](r RowsScanner) ([]T, error)` and `RowStrict[T any](r RowsScanner) (T, error)` to scan without using field names.
-Any fields not tagged with the `db` tag are ignored even if columns are found that match the field names.
 
 ### Columns
 

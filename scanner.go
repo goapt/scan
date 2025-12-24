@@ -62,23 +62,7 @@ func Row[T any](r RowsScanner) (T, error) {
 		defer closeRows(r)
 	}
 	var zero T
-	items, err := rowsGeneric[T](r, false)
-	if err != nil {
-		return zero, err
-	}
-	if len(items) == 0 {
-		return zero, sql.ErrNoRows
-	}
-	return items[0], nil
-}
-
-// RowStrict scans a single row into T, but it ignores fields that do not have a db tag.
-func RowStrict[T any](r RowsScanner) (T, error) {
-	if AutoClose {
-		defer closeRows(r)
-	}
-	var zero T
-	items, err := rowsGeneric[T](r, true)
+	items, err := rowsGeneric[T](r)
 	if err != nil {
 		return zero, err
 	}
@@ -93,18 +77,10 @@ func Rows[T any](r RowsScanner) ([]T, error) {
 	if AutoClose {
 		defer closeRows(r)
 	}
-	return rowsGeneric[T](r, false)
+	return rowsGeneric[T](r)
 }
 
-// RowsStrict scans sql rows into a slice of T only using db tags.
-func RowsStrict[T any](r RowsScanner) ([]T, error) {
-	if AutoClose {
-		defer closeRows(r)
-	}
-	return rowsGeneric[T](r, true)
-}
-
-func rowsGeneric[T any](r RowsScanner, strict bool) ([]T, error) {
+func rowsGeneric[T any](r RowsScanner) ([]T, error) {
 	cols, err := r.Columns()
 	if err != nil {
 		return nil, err
@@ -128,7 +104,7 @@ func rowsGeneric[T any](r RowsScanner, strict bool) ([]T, error) {
 			}
 			pointers = []any{itemVal.Addr().Interface()}
 		} else {
-			pointers = structPointers(itemVal, cols, strict)
+			pointers = structPointers(itemVal, cols)
 		}
 
 		if len(pointers) == 0 {
@@ -161,7 +137,7 @@ func initFieldTag(sliceItem reflect.Value, fieldTagMap *map[string]reflect.Value
 	}
 }
 
-func structPointers(sliceItem reflect.Value, cols []string, strict bool) []any {
+func structPointers(sliceItem reflect.Value, cols []string) []any {
 	pointers := make([]any, 0, len(cols))
 	fieldTag := make(map[string]reflect.Value, len(cols))
 	initFieldTag(sliceItem, &fieldTag)
@@ -171,11 +147,7 @@ func structPointers(sliceItem reflect.Value, cols []string, strict bool) []any {
 		if v, ok := fieldTag[colName]; ok {
 			fieldVal = v
 		} else {
-			if strict {
-				fieldVal = reflect.ValueOf(nil)
-			} else {
-				fieldVal = sliceItem.FieldByName(ScannerMapper(colName))
-			}
+			fieldVal = sliceItem.FieldByName(ScannerMapper(colName))
 		}
 		if !fieldVal.IsValid() || !fieldVal.CanSet() {
 			// have to add if we found a column because Scan() requires

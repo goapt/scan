@@ -4,13 +4,12 @@ import (
 	"database/sql"
 	"errors"
 	"reflect"
-	"sync"
 	"sync/atomic"
 	"testing"
 
-	"github.com/blockloop/scan/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/goapt/scan"
+	"github.com/goapt/scan/internal/assert"
+	"github.com/goapt/scan/internal/require"
 )
 
 func TestRowsConvertsColumnNamesToTitleText(t *testing.T) {
@@ -246,21 +245,6 @@ func TestRowErrorsWhenItemIsNotAPointer(t *testing.T) {
 	assert.EqualValues(t, sql.ErrNoRows, err)
 }
 
-func TestRowStrictIgnoresFieldsWithoutDBTag(t *testing.T) {
-	rows := fakeRowsWithRecords(t, []string{"First", "Last"},
-		[]any{"Brett", "Jones"},
-	)
-
-	type Item struct {
-		First string `db:"First"`
-		Last  string
-	}
-	item, err := scan.RowStrict[Item](rows)
-	require.NoError(t, err)
-	assert.Equal(t, "Brett", item.First)
-	assert.Equal(t, "", item.Last)
-}
-
 func TestRowScansNestedFields(t *testing.T) {
 	rows := fakeRowsWithRecords(t, []string{"p.First", "p.Last"},
 		[]any{"Brett", "Jones"},
@@ -274,40 +258,6 @@ func TestRowScansNestedFields(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "Brett", res.Item.First)
 	assert.Equal(t, "Jones", res.Item.Last)
-}
-
-func TestRowStrictScansNestedFields(t *testing.T) {
-	rows := fakeRowsWithRecords(t, []string{"p.First", "p.Last"},
-		[]any{"Brett", "Jones"},
-	)
-
-	type Item struct {
-		First string `db:"p.First"`
-		Last  string `db:"p.Last"`
-	}
-	res, err := scan.RowStrict[struct{ Item Item }](rows)
-	require.NoError(t, err)
-	assert.Equal(t, "Brett", res.Item.First)
-	assert.Equal(t, "Jones", res.Item.Last)
-}
-
-func TestRowsStrictIgnoresFieldsWithoutDBTag(t *testing.T) {
-	rows := fakeRowsWithRecords(t, []string{"First", "Last"},
-		[]any{"Brett", "Jones"},
-		[]any{"Fred", "Jones"},
-	)
-
-	type Item struct {
-		First string `db:"First"`
-		Last  string
-	}
-	items, err := scan.RowsStrict[Item](rows)
-	require.NoError(t, err)
-	require.Len(t, items, 2)
-	assert.Equal(t, "Brett", items[0].First)
-	assert.Equal(t, "", items[0].Last)
-	assert.Equal(t, "Fred", items[1].First)
-	assert.Equal(t, "", items[1].Last)
 }
 
 func TestRowClosesEarly(t *testing.T) {
@@ -341,34 +291,4 @@ func Test_OnAutoCloseErrorIsCalledWhenRowsCloseErrors(t *testing.T) {
 
 func setValue(ptr, val any) {
 	reflect.ValueOf(ptr).Elem().Set(reflect.ValueOf(val))
-}
-
-type simpleQueue struct {
-	items []any
-	m     *sync.Mutex
-}
-
-func newSimpleQueue(items []any) *simpleQueue {
-	return &simpleQueue{
-		items: items,
-		m:     &sync.Mutex{},
-	}
-}
-
-func (q *simpleQueue) Push(v any) {
-	q.m.Lock()
-	defer q.m.Unlock()
-	q.items = append([]any{v}, q.items...)
-}
-
-func (q *simpleQueue) Pop() (v any, ok bool) {
-	q.m.Lock()
-	defer q.m.Unlock()
-	if len(q.items) == 0 {
-		return nil, false
-	}
-
-	v = q.items[0]
-	q.items = q.items[1:]
-	return v, true
 }

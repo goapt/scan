@@ -6,7 +6,7 @@ import (
 	sync "sync"
 	"testing"
 
-	scan "github.com/blockloop/scan/v2"
+	scan "github.com/goapt/scan"
 )
 
 func fakeRowsWithColumns(t testing.TB, rowCnt int, cols ...string) *FakeRowsScanner {
