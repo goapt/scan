@@ -5,6 +5,7 @@
 package scan
 
 import (
+	"bytes"
 	"database/sql"
 	"database/sql/driver"
 	"errors"
@@ -42,10 +43,10 @@ func convertAssign(dest, src any) error {
 			*d = string(s)
 			return nil
 		case *any:
-			*d = cloneBytes(s)
+			*d = bytes.Clone(s)
 			return nil
 		case *[]byte:
-			*d = cloneBytes(s)
+			*d = bytes.Clone(s)
 			return nil
 		case *sql.RawBytes:
 			*d = s
@@ -86,10 +87,8 @@ func convertAssign(dest, src any) error {
 			reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
 			reflect.Float32, reflect.Float64:
-			if s, ok := asString(src); ok {
-				*d = s
-				return nil
-			}
+			*d = asString(src)
+			return nil
 		}
 	case *[]byte:
 		sv = reflect.ValueOf(src)
@@ -127,7 +126,7 @@ func convertAssign(dest, src any) error {
 	if sv.IsValid() && sv.Type().AssignableTo(dv.Type()) {
 		switch b := src.(type) {
 		case []byte:
-			dv.Set(reflect.ValueOf(cloneBytes(b)))
+			dv.Set(reflect.ValueOf(bytes.Clone(b)))
 		default:
 			dv.Set(sv)
 		}
@@ -144,54 +143,65 @@ func convertAssign(dest, src any) error {
 	//
 	// This also allows scanning into user defined types such as "type Int int64".
 	// For symmetry, also check for string destination types.
-	if s, ok := asString(src); ok {
-		switch dv.Kind() {
-		case reflect.Pointer:
-			dv.Set(reflect.New(dv.Type().Elem()))
-			return convertAssign(dv.Interface(), src)
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			i64, err := strconv.ParseInt(s, 10, dv.Type().Bits())
-			if err != nil {
-				// The errors that ParseInt returns have concrete type *NumError
-				err = strconvErr(err)
-				return fmt.Errorf("converting driver.Value type %T (%q) to a %s: %v", src, s, dv.Kind(), err)
-			}
-			dv.SetInt(i64)
+	switch dv.Kind() {
+	case reflect.Pointer:
+		if src == nil {
+			dv.SetZero()
 			return nil
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			u64, err := strconv.ParseUint(s, 10, dv.Type().Bits())
-			if err != nil {
-				// The errors that ParseUint returns have concrete type *NumError
-				err = strconvErr(err)
-				return fmt.Errorf("converting driver.Value type %T (%q) to a %s: %v", src, s, dv.Kind(), err)
-			}
-			dv.SetUint(u64)
+		}
+		dv.Set(reflect.New(dv.Type().Elem()))
+		return convertAssign(dv.Interface(), src)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		if src == nil {
+			return fmt.Errorf("converting NULL to %s is unsupported", dv.Kind())
+		}
+		s := asString(src)
+		i64, err := strconv.ParseInt(s, 10, dv.Type().Bits())
+		if err != nil {
+			err = strconvErr(err)
+			return fmt.Errorf("converting driver.Value type %T (%q) to a %s: %v", src, s, dv.Kind(), err)
+		}
+		dv.SetInt(i64)
+		return nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if src == nil {
+			return fmt.Errorf("converting NULL to %s is unsupported", dv.Kind())
+		}
+		s := asString(src)
+		u64, err := strconv.ParseUint(s, 10, dv.Type().Bits())
+		if err != nil {
+			err = strconvErr(err)
+			return fmt.Errorf("converting driver.Value type %T (%q) to a %s: %v", src, s, dv.Kind(), err)
+		}
+		dv.SetUint(u64)
+		return nil
+	case reflect.Float32, reflect.Float64:
+		if src == nil {
+			return fmt.Errorf("converting NULL to %s is unsupported", dv.Kind())
+		}
+		s := asString(src)
+		f64, err := strconv.ParseFloat(s, dv.Type().Bits())
+		if err != nil {
+			err = strconvErr(err)
+			return fmt.Errorf("converting driver.Value type %T (%q) to a %s: %v", src, s, dv.Kind(), err)
+		}
+		dv.SetFloat(f64)
+		return nil
+	case reflect.String:
+		if src == nil {
+			return fmt.Errorf("converting NULL to %s is unsupported", dv.Kind())
+		}
+		switch v := src.(type) {
+		case string:
+			dv.SetString(v)
 			return nil
-		case reflect.Float32, reflect.Float64:
-			f64, err := strconv.ParseFloat(s, dv.Type().Bits())
-			if err != nil {
-				// The errors that ParseFloat returns have concrete type *NumError
-				err = strconvErr(err)
-				return fmt.Errorf("converting driver.Value type %T (%q) to a %s: %v", src, s, dv.Kind(), err)
-			}
-			dv.SetFloat(f64)
-			return nil
-		case reflect.String:
-			dv.SetString(s)
+		case []byte:
+			dv.SetString(string(v))
 			return nil
 		}
 	}
 
 	return fmt.Errorf("unsupported Scan, storing driver.Value type %T into type %T", src, dest)
-}
-
-func cloneBytes(b []byte) []byte {
-	if b == nil {
-		return nil
-	}
-	c := make([]byte, len(b))
-	copy(c, b)
-	return c
 }
 
 func strconvErr(err error) error {
@@ -201,27 +211,27 @@ func strconvErr(err error) error {
 	return err
 }
 
-func asString(src any) (string, bool) {
+func asString(src any) string {
 	switch v := src.(type) {
 	case string:
-		return v, true
+		return v
 	case []byte:
-		return string(v), true
+		return string(v)
 	}
 	rv := reflect.ValueOf(src)
 	switch rv.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return strconv.FormatInt(rv.Int(), 10), true
+		return strconv.FormatInt(rv.Int(), 10)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return strconv.FormatUint(rv.Uint(), 10), true
+		return strconv.FormatUint(rv.Uint(), 10)
 	case reflect.Float64:
-		return strconv.FormatFloat(rv.Float(), 'g', -1, 64), true
+		return strconv.FormatFloat(rv.Float(), 'g', -1, 64)
 	case reflect.Float32:
-		return strconv.FormatFloat(rv.Float(), 'g', -1, 32), true
+		return strconv.FormatFloat(rv.Float(), 'g', -1, 32)
 	case reflect.Bool:
-		return strconv.FormatBool(rv.Bool()), true
+		return strconv.FormatBool(rv.Bool())
 	}
-	return "", false
+	return fmt.Sprintf("%v", src)
 }
 
 func asBytes(buf []byte, rv reflect.Value) (b []byte, ok bool) {
