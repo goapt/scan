@@ -14,7 +14,7 @@ import (
 )
 
 func TestRowsConvertsColumnNamesToTitleText(t *testing.T) {
-	var item struct {
+	type Item struct {
 		First string
 	}
 
@@ -23,7 +23,8 @@ func TestRowsConvertsColumnNamesToTitleText(t *testing.T) {
 		[]interface{}{expected},
 	)
 
-	require.NoError(t, scan.Row(&item, rows))
+	item, err := scan.Row[Item](rows)
+	require.NoError(t, err)
 	assert.Equal(t, 1, rows.ScanCallCount())
 	assert.Equal(t, expected, item.First)
 }
@@ -34,11 +35,12 @@ func TestRowsUsesTagName(t *testing.T) {
 		[]interface{}{expected},
 	)
 
-	var item struct {
+	type Item struct {
 		FirstAndLastName string `db:"first_and_last_name"`
 	}
 
-	require.NoError(t, scan.Row(&item, rows))
+	item, err := scan.Row[Item](rows)
+	require.NoError(t, err)
 	assert.Equal(t, 1, rows.ScanCallCount())
 	assert.Equal(t, expected, item.FirstAndLastName)
 }
@@ -49,12 +51,13 @@ func TestRowsIgnoresUnsetableColumns(t *testing.T) {
 		[]interface{}{expected},
 	)
 
-	var item struct {
+	type Item struct {
 		// private, unsetable
 		firstAndLastName string `db:"first_and_last_name"`
 	}
 
-	require.NoError(t, scan.Row(&item, rows))
+	item, err := scan.Row[Item](rows)
+	require.NoError(t, err)
 	assert.NotEqual(t, expected, item.firstAndLastName)
 }
 
@@ -65,29 +68,25 @@ func TestErrorsWhenScanErrors(t *testing.T) {
 		return expected
 	}
 
-	var item struct {
+	type Item struct {
 		FirstAndLastName string `db:"first_and_last_name"`
 	}
-
-	err := scan.Row(&item, rows)
+	_, err := scan.Row[Item](rows)
 	assert.Equal(t, expected, err)
 }
 
 func TestRowsErrorsWhenNotGivenAPointer(t *testing.T) {
 	rows := fakeRowsWithColumns(t, 1, "name")
 
-	err := scan.Rows("hello", rows)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "pointer")
+	_, err := scan.Rows[string](rows)
+	require.NoError(t, err)
 }
 
 func TestRowsErrorsWhenNotGivenAPointerToSlice(t *testing.T) {
 	rows := fakeRowsWithColumns(t, 1, "name")
 
-	var item struct{}
-	err := scan.Rows(&item, rows)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "slice")
+	_, err := scan.Rows[struct{}](rows)
+	require.NoError(t, err)
 }
 
 func TestErrorsWhenColumnsReturnsError(t *testing.T) {
@@ -98,22 +97,22 @@ func TestErrorsWhenColumnsReturnsError(t *testing.T) {
 		},
 	}
 
-	var items []struct {
+	type Item struct {
 		Name string
 		Age  int
 	}
-	err := scan.Rows(&items, rows)
+	_, err := scan.Rows[Item](rows)
 	assert.Equal(t, expected, err)
 }
 
 func TestDoesNothingWhenNoColumns(t *testing.T) {
 	rows := fakeRowsWithColumns(t, 1)
 
-	var items []struct {
+	type Item struct {
 		Name string
 		Age  int
 	}
-	err := scan.Rows(&items, rows)
+	items, err := scan.Rows[Item](rows)
 	assert.NoError(t, err)
 	assert.Nil(t, items)
 }
@@ -121,11 +120,11 @@ func TestDoesNothingWhenNoColumns(t *testing.T) {
 func TestDoesNothingWhenNextIsFalse(t *testing.T) {
 	rows := fakeRowsWithColumns(t, 0, "Name")
 
-	var items []struct {
+	type Item struct {
 		Name string
 		Age  int
 	}
-	err := scan.Rows(&items, rows)
+	items, err := scan.Rows[Item](rows)
 	assert.NoError(t, err)
 	assert.Nil(t, items)
 }
@@ -136,12 +135,12 @@ func TestIgnoresColumnsThatDoNotHaveFields(t *testing.T) {
 		[]interface{}{"Fred", "Jones"},
 	)
 
-	var items []struct {
+	type Item struct {
 		First string
 		Last  string
 	}
-
-	require.NoError(t, scan.Rows(&items, rows))
+	items, err := scan.Rows[Item](rows)
+	require.NoError(t, err)
 	require.Len(t, items, 2)
 	assert.Equal(t, "Brett", items[0].First)
 	assert.Equal(t, "Jones", items[0].Last)
@@ -155,13 +154,13 @@ func TestIgnoresFieldsThatDoNotHaveColumns(t *testing.T) {
 		[]interface{}{"Fred", int8(50)},
 	)
 
-	var items []struct {
+	type Item struct {
 		First string
 		Last  string
 		Age   int8
 	}
-
-	require.NoError(t, scan.Rows(&items, rows))
+	items, err := scan.Rows[Item](rows)
+	require.NoError(t, err)
 	require.Len(t, items, 2)
 	assert.EqualValues(t, "Brett", items[0].First)
 	assert.EqualValues(t, "", items[0].Last)
@@ -178,8 +177,8 @@ func TestRowScansToPrimitiveType(t *testing.T) {
 		[]interface{}{expected},
 	)
 
-	var name string
-	assert.NoError(t, scan.Row(&name, rows))
+	name, err := scan.Row[string](rows)
+	assert.NoError(t, err)
 	assert.Equal(t, expected, name)
 }
 
@@ -189,11 +188,7 @@ func TestReturnsScannerError(t *testing.T) {
 	rows := fakeRowsWithColumns(t, 1, "Name")
 	rows.ErrReturns(scanErr)
 
-	var persons []struct {
-		Name string
-	}
-
-	err := scan.Rows(&persons, rows)
+	_, err := scan.Rows[struct{ Name string }](rows)
 	assert.EqualValues(t, scanErr, err)
 }
 
@@ -214,9 +209,8 @@ func TestScansPrimitiveSlices(t *testing.T) {
 		}
 		rows := fakeRowsWithRecords(t, []string{"a"}, dbrows...)
 
-		var scanned []interface{}
-
-		require.NoError(t, scan.Rows(&scanned, rows))
+		scanned, err := scan.Rows[interface{}](rows)
+		require.NoError(t, err)
 		assert.EqualValues(t, items, scanned)
 	}
 }
@@ -224,43 +218,32 @@ func TestScansPrimitiveSlices(t *testing.T) {
 func TestErrorsWhenMoreThanOneColumnForPrimitiveSlice(t *testing.T) {
 	rows := fakeRowsWithColumns(t, 1, "fname", "lname")
 
-	var fnames []string
-
-	err := scan.Rows(&fnames, rows)
+	_, err := scan.Rows[string](rows)
 	assert.EqualValues(t, scan.ErrTooManyColumns, err)
 }
 
 func TestErrorsWhenScanRowToSlice(t *testing.T) {
 	rows := &FakeRowsScanner{}
 
-	var persons []struct {
-		ID int
-	}
-
-	err := scan.Row(&persons, rows)
-	assert.EqualValues(t, scan.ErrSliceForRow, err)
+	_, err := scan.Row[[]struct{ ID int }](rows)
+	assert.EqualValues(t, sql.ErrNoRows, err)
 }
 
 func TestRowReturnsErrNoRowsWhenQueryHasNoRows(t *testing.T) {
 	rows := fakeRowsWithColumns(t, 0, "First")
 
-	var item struct {
+	type Item struct {
 		First string
 	}
-
-	assert.EqualValues(t, sql.ErrNoRows, scan.Row(&item, rows))
+	_, err := scan.Row[Item](rows)
+	assert.EqualValues(t, sql.ErrNoRows, err)
 }
 
 func TestRowErrorsWhenItemIsNotAPointer(t *testing.T) {
 	rows := &FakeRowsScanner{}
 
-	var item struct {
-		First string
-	}
-
-	err := scan.Row(item, rows)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "pointer")
+	_, err := scan.Row[struct{ First string }](rows)
+	assert.EqualValues(t, sql.ErrNoRows, err)
 }
 
 func TestRowStrictIgnoresFieldsWithoutDBTag(t *testing.T) {
@@ -268,12 +251,12 @@ func TestRowStrictIgnoresFieldsWithoutDBTag(t *testing.T) {
 		[]interface{}{"Brett", "Jones"},
 	)
 
-	var item struct {
+	type Item struct {
 		First string `db:"First"`
 		Last  string
 	}
-
-	require.NoError(t, scan.RowStrict(&item, rows))
+	item, err := scan.RowStrict[Item](rows)
+	require.NoError(t, err)
 	assert.Equal(t, "Brett", item.First)
 	assert.Equal(t, "", item.Last)
 }
@@ -283,14 +266,12 @@ func TestRowScansNestedFields(t *testing.T) {
 		[]interface{}{"Brett", "Jones"},
 	)
 
-	var res struct {
-		Item struct {
-			First string `db:"p.First"`
-			Last  string `db:"p.Last"`
-		}
+	type Item struct {
+		First string `db:"p.First"`
+		Last  string `db:"p.Last"`
 	}
-
-	require.NoError(t, scan.Row(&res, rows))
+	res, err := scan.Row[struct{ Item Item }](rows)
+	require.NoError(t, err)
 	assert.Equal(t, "Brett", res.Item.First)
 	assert.Equal(t, "Jones", res.Item.Last)
 }
@@ -300,14 +281,12 @@ func TestRowStrictScansNestedFields(t *testing.T) {
 		[]interface{}{"Brett", "Jones"},
 	)
 
-	var res struct {
-		Item struct {
-			First string `db:"p.First"`
-			Last  string `db:"p.Last"`
-		}
+	type Item struct {
+		First string `db:"p.First"`
+		Last  string `db:"p.Last"`
 	}
-
-	require.NoError(t, scan.RowStrict(&res, rows))
+	res, err := scan.RowStrict[struct{ Item Item }](rows)
+	require.NoError(t, err)
 	assert.Equal(t, "Brett", res.Item.First)
 	assert.Equal(t, "Jones", res.Item.Last)
 }
@@ -318,12 +297,12 @@ func TestRowsStrictIgnoresFieldsWithoutDBTag(t *testing.T) {
 		[]interface{}{"Fred", "Jones"},
 	)
 
-	var items []struct {
+	type Item struct {
 		First string `db:"First"`
 		Last  string
 	}
-
-	require.NoError(t, scan.RowsStrict(&items, rows))
+	items, err := scan.RowsStrict[Item](rows)
+	require.NoError(t, err)
 	require.Len(t, items, 2)
 	assert.Equal(t, "Brett", items[0].First)
 	assert.Equal(t, "", items[0].Last)
@@ -336,9 +315,7 @@ func TestRowClosesEarly(t *testing.T) {
 		[]interface{}{"Bob"},
 	)
 
-	var name string
-	// dont' pass a pointer to cause an early error
-	assert.Error(t, scan.Row(name, rows))
+	_, _ = scan.Row[string](rows)
 	assert.EqualValues(t, 1, rows.CloseCallCount())
 }
 
@@ -357,8 +334,8 @@ func Test_OnAutoCloseErrorIsCalledWhenRowsCloseErrors(t *testing.T) {
 
 	rows.CloseReturns(expected)
 
-	var name string
-	assert.NoError(t, scan.Row(&name, rows))
+	_, err := scan.Row[string](rows)
+	assert.NoError(t, err)
 	assert.EqualValues(t, 1, calls)
 }
 

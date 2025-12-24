@@ -8,34 +8,34 @@ import (
 )
 
 func BenchmarkScanRowOneField(b *testing.B) {
-	var item struct {
+	type item struct {
 		First string
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		rows := fakeRowsWithColumns(b, 1, "First")
-		if err := scan.Row(&item, rows); err != nil {
+		if _, err := scan.Row[item](rows); err != nil {
 			b.Fatalf("unexpected error: %v", err)
 		}
 	}
 }
 
 func BenchmarkScanRowFiveFields(b *testing.B) {
-	var item struct {
+	type item struct {
 		First  string `db:"first"`
 		Age    int8   `db:"age"`
 		Active bool   `db:"active"`
 		City   string `db:"city"`
 		State  string `db:"state"`
 	}
-	cols, err := scan.Columns(&item)
+	cols, err := scan.Columns(&item{})
 	assert.NoError(b, err)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		rows := fakeRowsWithColumns(b, 1, cols...)
-		if err := scan.Row(&item, rows); err != nil {
+		if _, err := scan.Row[item](rows); err != nil {
 			b.Fatalf("unexpected error: %v", err)
 		}
 	}
@@ -45,14 +45,13 @@ func BenchmarkScanTenRowsOneField(b *testing.B) {
 	type item struct {
 		First string `db:"First"`
 	}
-	var items []item
 	cols, err := scan.Columns(&item{})
 	assert.NoError(b, err)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		rows := fakeRowsWithColumns(b, 10, cols...)
-		if err := scan.Rows(&items, rows); err != nil {
+		if _, err := scan.Rows[item](rows); err != nil {
 			b.Fatalf("unexpected error: %v", err)
 		}
 	}
@@ -71,14 +70,13 @@ func BenchmarkScanTenRowsTenFields(b *testing.B) {
 		Nine  string `db:"nine"`
 		Ten   string `db:"ten"`
 	}
-	var items []item
 	cols, err := scan.Columns(&item{})
 	assert.NoError(b, err)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		rows := fakeRowsWithColumns(b, 10, cols...)
-		if err := scan.Rows(&items, rows); err != nil {
+		if _, err := scan.Rows[item](rows); err != nil {
 			b.Fatalf("unexpected error: %v", err)
 		}
 	}

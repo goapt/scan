@@ -3,7 +3,6 @@ package scan
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"io"
 	"reflect"
 	"strings"
@@ -15,9 +14,6 @@ var (
 	// attempted to bind to a slice of a primitive type. For example, trying to bind
 	// `select col1, col2 from mutable` to []string
 	ErrTooManyColumns = errors.New("too many columns returned for primitive slice")
-
-	// ErrSliceForRow occurs when trying to use Row on a slice
-	ErrSliceForRow = errors.New("cannot scan Row into slice")
 
 	// AutoClose is true when scan should automatically close Scanner when the scan
 	// is complete. If you set it to false, then you must defer rows.Close() manually
@@ -59,120 +55,94 @@ func capitalizeFirst(s string) string {
 	return string(runes)
 }
 
-// Row scans a single row into a single variable. It requires that you use
-// db.Query and not db.QueryRow, because QueryRow does not return column names.
-// There is no performance impact in using one over the other. QueryRow only
-// defers returning err until Scan is called, which is an unnecessary
-// optimization for this library.
-func Row(v interface{}, r RowsScanner) error {
+// Row scans a single row and returns a value of type T.
+// It requires that you use db.Query and not db.QueryRow, because QueryRow does not return column names.
+func Row[T any](r RowsScanner) (T, error) {
 	if AutoClose {
 		defer closeRows(r)
 	}
-
-	return row(v, r, false)
-}
-
-// RowStrict scans a single row into a single variable. It is identical to
-// Row, but it ignores fields that do not have a db tag
-func RowStrict(v interface{}, r RowsScanner) error {
-	if AutoClose {
-		defer closeRows(r)
-	}
-
-	return row(v, r, true)
-}
-
-func row(v interface{}, r RowsScanner, strict bool) error {
-	vType := reflect.TypeOf(v)
-	if k := vType.Kind(); k != reflect.Ptr {
-		return fmt.Errorf("%q must be a pointer: %w", k.String(), ErrNotAPointer)
-	}
-
-	vType = vType.Elem()
-	vVal := reflect.ValueOf(v).Elem()
-	if vType.Kind() == reflect.Slice {
-		return ErrSliceForRow
-	}
-
-	sl := reflect.New(reflect.SliceOf(vType))
-	err := rows(sl.Interface(), r, strict)
+	var zero T
+	items, err := rowsGeneric[T](r, false)
 	if err != nil {
-		return err
+		return zero, err
 	}
-
-	sl = sl.Elem()
-
-	if sl.Len() == 0 {
-		return sql.ErrNoRows
+	if len(items) == 0 {
+		return zero, sql.ErrNoRows
 	}
-
-	vVal.Set(sl.Index(0))
-
-	return nil
+	return items[0], nil
 }
 
-// Rows scans sql rows into a slice (v)
-func Rows(v interface{}, r RowsScanner) (outerr error) {
+// RowStrict scans a single row into T, but it ignores fields that do not have a db tag.
+func RowStrict[T any](r RowsScanner) (T, error) {
 	if AutoClose {
 		defer closeRows(r)
 	}
-
-	return rows(v, r, false)
+	var zero T
+	items, err := rowsGeneric[T](r, true)
+	if err != nil {
+		return zero, err
+	}
+	if len(items) == 0 {
+		return zero, sql.ErrNoRows
+	}
+	return items[0], nil
 }
 
-// RowsStrict scans sql rows into a slice (v) only using db tags
-func RowsStrict(v interface{}, r RowsScanner) (outerr error) {
+// Rows scans sql rows into a slice of T.
+func Rows[T any](r RowsScanner) ([]T, error) {
 	if AutoClose {
 		defer closeRows(r)
 	}
-
-	return rows(v, r, true)
+	return rowsGeneric[T](r, false)
 }
 
-func rows(v interface{}, r RowsScanner, strict bool) (outerr error) {
-	vType := reflect.TypeOf(v)
-	if k := vType.Kind(); k != reflect.Ptr {
-		return fmt.Errorf("%q must be a pointer: %w", k.String(), ErrNotAPointer)
+// RowsStrict scans sql rows into a slice of T only using db tags.
+func RowsStrict[T any](r RowsScanner) ([]T, error) {
+	if AutoClose {
+		defer closeRows(r)
 	}
-	sliceType := vType.Elem()
-	if reflect.Slice != sliceType.Kind() {
-		return fmt.Errorf("%q must be a slice: %w", sliceType.String(), ErrNotASlicePointer)
-	}
+	return rowsGeneric[T](r, true)
+}
 
-	sliceVal := reflect.Indirect(reflect.ValueOf(v))
-	itemType := sliceType.Elem()
-
+func rowsGeneric[T any](r RowsScanner, strict bool) ([]T, error) {
 	cols, err := r.Columns()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	var out []T
+	var t T
+	itemType := reflect.TypeOf(t)
+	if itemType == nil {
+		itemType = reflect.TypeOf((*any)(nil)).Elem()
+	}
 	isPrimitive := itemType.Kind() != reflect.Struct
 
 	for r.Next() {
-		sliceItem := reflect.New(itemType).Elem()
+		itemVal := reflect.New(itemType).Elem()
 
 		var pointers []interface{}
 		if isPrimitive {
 			if len(cols) > 1 {
-				return ErrTooManyColumns
+				return nil, ErrTooManyColumns
 			}
-			pointers = []interface{}{sliceItem.Addr().Interface()}
+			pointers = []interface{}{itemVal.Addr().Interface()}
 		} else {
-			pointers = structPointers(sliceItem, cols, strict)
+			pointers = structPointers(itemVal, cols, strict)
 		}
 
 		if len(pointers) == 0 {
-			return nil
+			continue
 		}
 
-		err := r.Scan(pointers...)
-		if err != nil {
-			return err
+		if err := r.Scan(pointers...); err != nil {
+			return nil, err
 		}
-		sliceVal.Set(reflect.Append(sliceVal, sliceItem))
+
+		// append scanned item
+		out = append(out, itemVal.Interface().(T))
 	}
-	return r.Err()
+	return out, r.Err()
 }
 
 // Initialization the tags from struct.

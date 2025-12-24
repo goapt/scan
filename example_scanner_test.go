@@ -64,12 +64,11 @@ func ExampleRow() {
 		panic(err)
 	}
 
-	var person struct {
+	type personStruct struct {
 		ID   int    `db:"id"`
 		Name string `db:"name"`
 	}
-
-	err = scan.Row(&person, rows)
+	person, err := scan.Row[personStruct](rows)
 	if err != nil {
 		panic(err)
 	}
@@ -94,15 +93,15 @@ func ExampleRowStrict_nested() {
 		panic(err)
 	}
 
-	var person struct {
-		ID      int    `db:"person.id"`
-		Name    string `db:"person.name"`
-		Company struct {
-			Name string `db:"company.name"`
-		}
+	type companyStruct struct {
+		Name string `db:"company.name"`
 	}
-
-	err = scan.RowStrict(&person, rows)
+	type personStruct struct {
+		ID      int           `db:"person.id"`
+		Name    string        `db:"person.name"`
+		Company companyStruct
+	}
+	person, err := scan.RowStrict[personStruct](rows)
 	if err != nil {
 		panic(err)
 	}
@@ -123,12 +122,11 @@ func ExampleRowStrict() {
 		panic(err)
 	}
 
-	var person struct {
+	type personStruct struct {
 		ID   int
 		Name string `db:"name"`
 	}
-
-	err = scan.RowStrict(&person, rows)
+	person, err := scan.RowStrict[personStruct](rows)
 	if err != nil {
 		panic(err)
 	}
@@ -146,12 +144,11 @@ func ExampleRowStrict_ptr() {
 		panic(err)
 	}
 
-	var person struct {
+	type personStruct struct {
 		ID   int
 		Name *string `db:"name"`
 	}
-
-	err = scan.RowStrict(&person, rows)
+	person, err := scan.RowStrict[personStruct](rows)
 	if err != nil {
 		panic(err)
 	}
@@ -170,12 +167,11 @@ func ExampleRowStrict_ptrType() {
 	}
 
 	type NullableString *string
-	var person struct {
+	type personStruct struct {
 		ID   int
 		Name NullableString `db:"name"`
 	}
-
-	err = scan.RowStrict(&person, rows)
+	person, err := scan.RowStrict[personStruct](rows)
 	if err != nil {
 		panic(err)
 	}
@@ -193,9 +189,7 @@ func ExampleRow_scalar() {
 		panic(err)
 	}
 
-	var name string
-
-	err = scan.Row(&name, rows)
+	name, err := scan.Row[string](rows)
 	if err != nil {
 		panic(err)
 	}
@@ -213,12 +207,11 @@ func ExampleRows() {
 		panic(err)
 	}
 
-	var persons []struct {
+	type personStruct struct {
 		ID   int     `db:"id"`
 		Name *string `db:"name"`
 	}
-
-	err = scan.Rows(&persons, rows)
+	persons, err := scan.Rows[personStruct](rows)
 	if err != nil {
 		panic(err)
 	}
@@ -236,12 +229,11 @@ func ExampleRowsStrict() {
 		panic(err)
 	}
 
-	var persons []struct {
+	type personStruct struct {
 		ID   int
 		Name *string `db:"name"`
 	}
-
-	err = scan.Rows(&persons, rows)
+	persons, err := scan.Rows[personStruct](rows)
 	if err != nil {
 		panic(err)
 	}
@@ -259,8 +251,7 @@ func ExampleRows_primitive() {
 		panic(err)
 	}
 
-	var names []string
-	err = scan.Rows(&names, rows)
+	names, err := scan.Rows[string](rows)
 	if err != nil {
 		panic(err)
 	}

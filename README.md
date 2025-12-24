@@ -1,17 +1,5 @@
 # Scan
 
-> [!NOTE]
-> For all intents and purposes, this project is considered 'complete.' I do not plan on making any changes in the near future and have not written any code here since approximately 2021. To the best of my knowledge, everything functions as intended. If you are seeking a more comprehensive solution, please refer to https://github.com/stytchauth/sqx. That being said, this project operates effectively in its current state and requires no new code. Feel free to fork it and continue development if desired.
-> 
-
-[![GoDoc](https://godoc.org/github.com/blockloop/scan?status.svg)](https://godoc.org/github.com/blockloop/scan)
-[![go test](https://github.com/blockloop/scan/workflows/go%20test/badge.svg)](https://github.com/blockloop/scan/actions)
-[![Coveralls github](https://img.shields.io/coveralls/github/blockloop/scan.svg)](https://coveralls.io/github/blockloop/scan)
-[![Report Card](https://goreportcard.com/badge/github.com/blockloop/scan)](https://goreportcard.com/report/github.com/blockloop/scan)
-
-Scan standard lib database rows directly to structs or slices. 
-For the most comprehensive and up-to-date docs see the [godoc](https://godoc.org/github.com/blockloop/scan)
-
 ```go
 import "github.com/blockloop/scan/v2"
 ```
@@ -19,12 +7,12 @@ import "github.com/blockloop/scan/v2"
 ## Examples
 
 ### Multiple Rows
+
 ```go
 db, err := sql.Open("sqlite3", "database.sqlite")
 rows, err := db.Query("SELECT * FROM persons")
 
-var persons []Person
-err := scan.Rows(&persons, rows)
+persons, err := scan.Rows[Person](rows)
 
 fmt.Printf("%#v", persons)
 // []Person{
@@ -33,12 +21,12 @@ fmt.Printf("%#v", persons)
 //    {ID: 3, Name: "stacy"},
 // }
 ```
+
 ### Multiple rows of primitive type
 
 ```go
 rows, err := db.Query("SELECT name FROM persons")
-var names []string
-err := scan.Rows(&names, rows)
+names, err := scan.Rows[string](rows)
 
 fmt.Printf("%#v", names)
 // []string{
@@ -52,8 +40,7 @@ fmt.Printf("%#v", names)
 
 ```go
 rows, err := db.Query("SELECT * FROM persons where name = 'brett' LIMIT 1")
-var person Person
-err := scan.Row(&person, rows)
+person, err := scan.Row[Person](rows)
 
 fmt.Printf("%#v", person)
 // Person{ ID: 1, Name: "brett" }
@@ -63,14 +50,14 @@ fmt.Printf("%#v", person)
 
 ```go
 rows, err := db.Query("SELECT age FROM persons where name = 'brett' LIMIT 1")
-var age int8
-err := scan.Row(&age, rows)
+age, err := scan.Row[int8](rows)
 
 fmt.Printf("%d", age)
 // 100
 ```
 
 ### Nested Struct Fields (as of v2.0.0)
+
 ```go
 rows, err := db.Query(`
 	SELECT person.id,person.name,company.name FROM person
@@ -78,7 +65,7 @@ rows, err := db.Query(`
 	LIMIT 1
 `)
 
-var person struct {
+type Person struct {
 	ID      int    `db:"person.id"`
 	Name    string `db:"person.name"`
 	Company struct {
@@ -86,7 +73,7 @@ var person struct {
 	}
 }
 
-err = scan.RowStrict(&person, rows)
+person, err := scan.RowStrict[Person](rows)
 
 err = json.NewEncoder(os.Stdout).Encode(&person)
 // Output:
@@ -99,9 +86,9 @@ By default, column names are mapped [to](https://github.com/blockloop/scan/blob/
 
 ### Strict Scanning
 
-Both `Rows` and `Row` have strict alternatives to allow scanning to structs _strictly_ based on their `db` tag.
-To avoid unwanted behavior you can use `RowsStrict` or `RowStrict` to scan without using field names.
-Any fields not tagged with the `db` tag will be ignored even if columns are found that match the field names.
+Both `Rows` and `Row` have strict alternatives to allow scanning to structs strictly based on their `db` tag.
+Use the generic variants `RowsStrict[T any](r RowsScanner) ([]T, error)` and `RowStrict[T any](r RowsScanner) (T, error)` to scan without using field names.
+Any fields not tagged with the `db` tag are ignored even if columns are found that match the field names.
 
 ### Columns
 
@@ -161,7 +148,7 @@ AutoClose: Automatically call `rows.Close()` after scan completes (default true)
 
 While many other projects support similar features (i.e. [sqlx](https://github.com/jmoiron/sqlx)) scan allows you to use any database lib such as the stdlib or [squirrel][sq] to write fluent SQL statements and pass the resulting `rows` to `scan` for scanning.
 
-## Benchmarks 
+## Benchmarks
 
 ```
 $ go test -bench=. -benchtime=10s ./...
@@ -179,5 +166,4 @@ PASS
 ok      github.com/blockloop/scan       92.374s
 ```
 
-
-[sq]: https://github.com/Masterminds/squirrel	"Squirrel"
+[sq]: https://github.com/Masterminds/squirrel "Squirrel"
