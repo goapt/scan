@@ -20,7 +20,7 @@ jobs:
           - "1.25"
 
     steps:
-      - name: Set up Go 1.x
+      - name: Set up Golang
         uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.go }}
