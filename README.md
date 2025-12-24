@@ -130,18 +130,6 @@ vals := scan.Values([]string{"ID", "Name"}, user)
 // []interface{}{ 1, "Brett" }
 ```
 
-I find that the usefulness of both Values and Columns lies within using a library such as [sq][].
-
-```go
-sq.Insert(userCols...).
-        Into("users").
-        Values(scan.Values(userCols, &user)...)
-```
-
-## Configuration
-
-AutoClose: Automatically call `rows.Close()` after scan completes (default true)
-
 ## Why
 
 While many other projects support similar features (i.e. [sqlx](https://github.com/jmoiron/sqlx)) scan allows you to use any database lib such as the stdlib to write fluent SQL statements and pass the resulting `rows` to `scan` for scanning.

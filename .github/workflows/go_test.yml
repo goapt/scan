@@ -3,9 +3,9 @@ name: go test
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   build:
@@ -14,32 +14,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go: 
-          - '1.17'
-          - '1.18'
-          - '1.19'
-          - '1.20'
-          - '1.21'
+        go:
+          - "1.20"
+          - "1.21"
+          - "1.22"
+          - "1.23"
+          - "1.24"
+          - "1.25"
 
     steps:
-    - name: Set up Go 1.x
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ matrix.go }}
-      id: go
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go }}
+        id: go
 
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Lint
-      uses: golangci/golangci-lint-action@v3
-      with:
-        version: v1.51
+      - name: Lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v2.4
 
-    - name: Test
-      run: go test -v -coverprofile=.coverprofile .
+      - name: Test
+        run: go test -v -coverprofile=.coverprofile .
 
-    - name: Report coveralls.io
-      uses: shogo82148/actions-goveralls@v1
-      with:
-        path-to-profile: .coverprofile
-        flag-name: Go-${{ matrix.go }}
+      - name: Report coveralls.io
+        uses: shogo82148/actions-goveralls@v1
+        with:
+          path-to-profile: .coverprofile
+          flag-name: Go-${{ matrix.go }}
