@@ -23,11 +23,11 @@ func Nullable(dest any) any {
 	}
 
 	rt := reflect.TypeOf(dest)
-	if rt.Kind() != reflect.Ptr {
+	if rt.Kind() != reflect.Pointer {
 		panic("rel: destination must be a pointer")
 	}
 
-	if rt.Elem().Kind() == reflect.Ptr {
+	if rt.Elem().Kind() == reflect.Pointer {
 		return dest
 	}
 
