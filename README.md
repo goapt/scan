@@ -75,7 +75,7 @@ fmt.Printf("%d", age)
 // 100
 ```
 
-### Nested Struct Fields (as of v2.0.0)
+### Nested Struct Fields
 
 ```go
 rows, err := db.Query(`

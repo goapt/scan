@@ -49,7 +49,7 @@ func writeFields(val reflect.Value, m map[string][]int, index []int) {
 	typ := val.Type()
 	numfield := val.NumField()
 
-	for i := 0; i < numfield; i++ {
+	for i := range numfield {
 		valField := val.Field(i)
 		if !valField.CanSet() {
 			continue
