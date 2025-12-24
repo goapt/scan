@@ -1,5 +1,19 @@
 # Scan
 
+[![GoDoc](https://godoc.org/github.com/goapt/scan?status.svg)](https://godoc.org/github.com/goapt/scan)
+[![Build Status](https://github.com/goapt/scan/workflows/go%20test/badge.svg)](https://github.com/goapt/scan/actions)
+[![Coverage Status](https://coveralls.io/repos/github/goapt/scan/badge.svg?branch=master)](https://coveralls.io/github/goapt/scan?branch=master)
+
+Scan is a Go package for scanning database rows into structs or slices of primitive types.
+
+## Installation
+
+```sh
+go get github.com/goapt/scan
+```
+
+## Usage
+
 ```go
 import "github.com/goapt/scan"
 ```
