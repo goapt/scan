@@ -6,6 +6,8 @@
 
 Scan is a Go package for scanning database rows into structs or slices of primitive types.
 
+> This project is forked from [https://github.com/blockloop/scan](https://github.com/blockloop/scan) and adjusted to be generic, while all dependencies are removed.
+
 ## Installation
 
 ```sh
