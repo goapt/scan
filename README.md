@@ -25,6 +25,11 @@ import "github.com/goapt/scan"
 ### Multiple Rows
 
 ```go
+type Person struct {
+    ID   int    `db:"id"`
+    Name string
+}
+
 db, err := sql.Open("sqlite3", "database.sqlite")
 rows, err := db.Query("SELECT * FROM persons")
 defer rows.Close()
@@ -75,75 +80,14 @@ fmt.Printf("%d", age)
 // 100
 ```
 
-### Nested Struct Fields
-
-```go
-rows, err := db.Query(`
-	SELECT person.id,person.name,company.name FROM person
-	JOIN company on company.id = person.company_id
-	LIMIT 1
-`)
-defer rows.Close()
-
-type Person struct {
-	ID      int    `db:"person.id"`
-	Name    string `db:"person.name"`
-	Company struct {
-		Name string `db:"company.name"`
-	}
-}
-
-person, err := scan.Row[Person](rows)
-
-err = json.NewEncoder(os.Stdout).Encode(&person)
-// Output:
-// {"ID":1,"Name":"brett","Company":{"Name":"costco"}}
-```
-
 ### Custom Column Mapping
 
-By default, column names are mapped to and from database column names using basic title case conversion. You can override this behavior by setting `ColumnsMapper` and `ScannerMapper` to custom functions.
-
-### Columns
-
-`Columns` scans a struct and returns a string slice of the assumed column names based on the `db` tag or the struct field name respectively. To avoid assumptions, use `ColumnsStrict` which will _only_ return the fields tagged with the `db` tag. Both `Columns` and `ColumnsStrict` are variadic. They both accept a string slice of column names to exclude from the list. It is recommended that you cache this slice.
+By default, column names are mapped to and from database column names using basic title case conversion. You can override this behavior by setting `ScannerMapper` to custom functions.
 
 ```go
-package main
-
-type User struct {
-        ID        int64
-        Name      string
-        Age       int
-        BirthDate string `db:"bday"`
-        Zipcode   string `db:"-"`
-        Store     struct {
-                ID int
-                // ...
-        }
+scan.ScannerMapper = func(columnName string) string {
+	return strings.ToLower(columnName)
 }
-
-var nobody = new(User)
-var userInsertCols = scan.Columns(nobody, "ID")
-// []string{ "Name", "Age", "bday" }
-
-var userSelectCols = scan.Columns(nobody)
-// []string{ "ID", "Name", "Age", "bday" }
-```
-
-### Values
-
-`Values` scans a struct and returns the values associated with the provided columns. Values uses a `sync.Map` to cache fields of structs to greatly improve the performance of scanning types. The first time a struct is scanned it's **exported** fields locations are cached. When later retrieving values from the same struct it should be much faster.
-
-```go
-user := &User{
-        ID: 1,
-        Name: "Brett",
-        Age: 100,
-}
-
-vals := scan.Values([]string{"ID", "Name"}, user)
-// []interface{}{ 1, "Brett" }
 ```
 
 ## Why

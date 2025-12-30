@@ -237,19 +237,6 @@ func TestRowErrorsWhenItemIsNotAPointer(t *testing.T) {
 	assert.EqualValues(t, sql.ErrNoRows, err)
 }
 
-func TestRowScansNestedFields(t *testing.T) {
-	rows := q(t, "SELECT 'Brett' AS `p.First`, 'Jones' AS `p.Last`")
-	defer rows.Close()
-	type Item struct {
-		First string `db:"p.First"`
-		Last  string `db:"p.Last"`
-	}
-	res, err := scan.Row[struct{ Item Item }](rows)
-	require.NoError(t, err)
-	assert.Equal(t, "Brett", res.Item.First)
-	assert.Equal(t, "Jones", res.Item.Last)
-}
-
 func TestRowClosesEarly(t *testing.T) {
 	rows := q(t, "SELECT 'Bob' AS name")
 	_, _ = scan.Row[string](rows)
